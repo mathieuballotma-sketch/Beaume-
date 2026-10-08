@@ -1,0 +1,13 @@
+data/inbox/
+data/out/
+data/legal/
+data/vector/
+data/logs/
+data/tmp/
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.DS_Store
+*.log
+*.sqlite
