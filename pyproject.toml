@@ -1,0 +1,14 @@
+[project]
+name = "beaume"
+version = "0.0.1"
+description = "Assistant juridique 100% local pour avocats"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
