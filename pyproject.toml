@@ -8,6 +8,10 @@ dependencies = []
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+filterwarnings = [
+    "ignore::DeprecationWarning:pymupdf",
+    "ignore:builtin type Swig",
+]
 
 [build-system]
 requires = ["setuptools>=68"]
