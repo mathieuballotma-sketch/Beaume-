@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from beaume.application.chunker import Chunk, decouper
 from beaume.application.etats import EtatDocument
 from beaume.application.machine import Document, TransitionIllegale
 from beaume.ports.registre import RegistreExtracteurs
@@ -19,6 +20,7 @@ log = get_logger("lecteur_dossier")
 class FichierExtrait:
     chemin: Path
     texte: str
+    chunks: tuple[Chunk, ...] = ()
     erreur: str | None = None
 
     @property
@@ -41,12 +43,23 @@ class ResultatDossier:
     def nb_erreurs(self) -> int:
         return sum(1 for f in self.fichiers if not f.ok)
 
+    @property
+    def nb_chunks(self) -> int:
+        return sum(len(f.chunks) for f in self.fichiers)
+
 
 class LecteurDossier:
-    """Lit un dossier client et en extrait tous les fichiers supportes."""
+    """Lit un dossier client, extrait et decoupe chaque fichier."""
 
-    def __init__(self, registre: RegistreExtracteurs) -> None:
+    def __init__(
+        self,
+        registre: RegistreExtracteurs,
+        taille_chunk: int = 600,
+        chevauchement: int = 80,
+    ) -> None:
         self.registre = registre
+        self.taille_chunk = taille_chunk
+        self.chevauchement = chevauchement
 
     def lire(self, dossier: Path) -> ResultatDossier:
         dossier = Path(dossier)
@@ -80,10 +93,20 @@ class LecteurDossier:
             try:
                 doc.transition(EtatDocument.EXTRAIT, "extraction en cours")
                 texte = extracteur.extraire(fichier)
-                resultat.fichiers.append(
-                    FichierExtrait(chemin=fichier, texte=texte)
+                chunks = tuple(
+                    decouper(texte, self.taille_chunk, self.chevauchement)
                 )
-                log.info("Extrait : %s (%d caracteres)", fichier.name, len(texte))
+                resultat.fichiers.append(
+                    FichierExtrait(
+                        chemin=fichier,
+                        texte=texte,
+                        chunks=chunks,
+                    )
+                )
+                log.info(
+                    "Extrait : %s (%d caracteres, %d chunks)",
+                    fichier.name, len(texte), len(chunks),
+                )
             except Exception as exc:  # noqa: BLE001
                 log.error("Echec sur %s : %s", fichier.name, exc)
                 try:

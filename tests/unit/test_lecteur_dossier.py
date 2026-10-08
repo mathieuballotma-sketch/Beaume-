@@ -72,3 +72,43 @@ def test_ordre_alphabetique(tmp_path):
     r = lecteur.lire(tmp_path)
     noms = [f.chemin.name for f in r.fichiers]
     assert noms == ["a.pdf", "b.pdf", "c.pdf"]
+
+
+# --- Integration du chunking -------------------------------------------------
+
+def test_texte_long_produit_plusieurs_chunks(tmp_path):
+    texte = "\n\n".join(
+        f"Paragraphe {i} avec un contenu suffisamment long pour peser."
+        for i in range(20)
+    )
+    _make_pdf(tmp_path / "long.pdf", texte)
+    lecteur = LecteurDossier(_registre(), taille_chunk=200, chevauchement=30)
+    r = lecteur.lire(tmp_path)
+    assert r.nb_ok == 1
+    assert len(r.fichiers[0].chunks) > 1
+    assert r.nb_chunks > 1
+
+
+def test_texte_court_produit_un_chunk(tmp_path):
+    _make_pdf(tmp_path / "court.pdf", "Un petit paragraphe.")
+    lecteur = LecteurDossier(_registre())
+    r = lecteur.lire(tmp_path)
+    assert len(r.fichiers[0].chunks) == 1
+
+
+def test_fichier_en_erreur_sans_chunk(tmp_path):
+    (tmp_path / "notes.xyz").write_text("inconnu")
+    lecteur = LecteurDossier(_registre())
+    r = lecteur.lire(tmp_path)
+    f = r.fichiers[0]
+    assert not f.ok
+    assert f.chunks == ()
+    assert r.nb_chunks == 0
+
+
+def test_chunks_immuables(tmp_path):
+    """FichierExtrait est frozen : chunks est un tuple, pas une liste."""
+    _make_pdf(tmp_path / "a.pdf", "Contenu.")
+    lecteur = LecteurDossier(_registre())
+    r = lecteur.lire(tmp_path)
+    assert isinstance(r.fichiers[0].chunks, tuple)
