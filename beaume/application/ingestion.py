@@ -14,6 +14,7 @@ from beaume.ports.encodeur import Encodeur
 from beaume.ports.index_vectoriel import ElementIndexe, IndexVectoriel
 from beaume.ports.registre import RegistreExtracteurs
 from beaume.utils.logging import get_logger
+from beaume.utils.profiler import chronometre
 
 log = get_logger("ingestion")
 
@@ -50,6 +51,7 @@ class IngestionDossier:
         self.encodeur = encodeur
         self.index = index
 
+    @chronometre("ingestion.totale")
     def ingerer(self, dossier: Path) -> RapportIngestion:
         dossier = Path(dossier)
         resultat: ResultatDossier = self.lecteur.lire(dossier)
