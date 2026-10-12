@@ -12,13 +12,42 @@ from beaume.legal.ids import IdentifiantLegifrance
 
 
 class CodeJuridique(str, Enum):
+    """Codes juridiques francais.
+
+    Les 20 codes principaux sont explicites. Les 56 autres codes
+    presents dans le corpus DILA sont regroupes sous CODE_AUTRE.
+    """
+    # Codes fondamentaux
     CODE_CIVIL = "code_civil"
-    CODE_TRAVAIL = "code_travail"
     CODE_PENAL = "code_penal"
+    CODE_TRAVAIL = "code_travail"
     CODE_COMMERCE = "code_commerce"
-    CODE_PROCEDURE_CIVILE = "code_procedure_civile"
     CODE_CONSOMMATION = "code_consommation"
     CODE_SECURITE_SOCIALE = "code_securite_sociale"
+
+    # Procedures
+    CODE_PROCEDURE_CIVILE = "code_procedure_civile"
+    CODE_PROCEDURE_PENALE = "code_procedure_penale"
+
+    # Codes sectoriels majeurs
+    CODE_SANTE_PUBLIQUE = "code_sante_publique"
+    CODE_RURAL = "code_rural"
+    CODE_TRANSPORTS = "code_transports"
+    CODE_ENVIRONNEMENT = "code_environnement"
+    CODE_COLLECTIVITES_TERRITORIALES = "code_collectivites_territoriales"
+    CODE_MONETAIRE_FINANCIER = "code_monetaire_financier"
+    CODE_EDUCATION = "code_education"
+    CODE_CONSTRUCTION_HABITATION = "code_construction_habitation"
+    CODE_ACTION_SOCIALE_FAMILLES = "code_action_sociale_familles"
+    CODE_DEFENSE = "code_defense"
+    CODE_FONCTION_PUBLIQUE = "code_fonction_publique"
+    CODE_ENERGIE = "code_energie"
+    CODE_SECURITE_INTERIEURE = "code_securite_interieure"
+    CODE_ETRANGERS = "code_etrangers"
+    CODE_URBANISME = "code_urbanisme"
+
+    # Fourre-tout pour les 56 autres codes
+    CODE_AUTRE = "code_autre"
 
 
 class StatutVersion(str, Enum):
