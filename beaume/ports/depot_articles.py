@@ -36,6 +36,12 @@ class DepotArticles(Protocol):
         date_reference: date,
     ) -> tuple[Article, VersionArticle] | None: ...
 
+    def trouver_par_id(
+        self,
+        article_id: str,
+        date_reference: date,
+    ) -> Article | None: ...
+
     def rechercher_texte(
         self,
         mots: str,

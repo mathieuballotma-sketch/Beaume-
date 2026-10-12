@@ -9,6 +9,7 @@ from beaume.application.prompts import construire_prompt
 from beaume.legal.analyse import Analyse
 from beaume.legal.model import Citation, CodeJuridique
 from beaume.ports.chercheur_articles import ChercheurArticles
+from beaume.ports.depot_articles import DepotArticles
 from beaume.ports.generateur import Generateur
 from beaume.ports.registre import RegistreExtracteurs
 from beaume.utils.logging import get_logger
@@ -76,6 +77,7 @@ class AnalyseDossier:
         registre: RegistreExtracteurs,
         chercheur: ChercheurArticles,
         generateur: Generateur,
+        depot: DepotArticles,
         taille_chunk: int = 600,
         chevauchement: int = 80,
         limite_articles: int = 5,
@@ -87,7 +89,19 @@ class AnalyseDossier:
         )
         self.chercheur = chercheur
         self.generateur = generateur
+        self.depot = depot
         self.limite_articles = limite_articles
+
+    def _enrichir_articles(self, resultats) -> list:
+        """Recupere les Article complets depuis le depot."""
+        vus = {}
+        for r in resultats:
+            if r.article_id in vus:
+                continue
+            article = self.depot.trouver_par_id(r.article_id, date(2000, 1, 1))
+            if article is not None:
+                vus[r.article_id] = article
+        return list(vus.values())
 
     def analyser(
         self,
@@ -120,7 +134,7 @@ class AnalyseDossier:
                 self.chercheur.chercher(chunk, limite=self.limite_articles)
             )
 
-        articles_candidats: list = []
+        articles_candidats = self._enrichir_articles(resultats_recherche)
         log.info(
             "Analyse %s : %d chunks, %d articles candidats (%d hits chercheur)",
             dossier, len(chunks_texte), len(articles_candidats),

@@ -205,6 +205,47 @@ class DepotSQLite:
 
         return article, version_trouvee
 
+    def trouver_par_id(
+        self,
+        article_id: str,
+        date_reference: date,
+    ) -> Article | None:
+        """Retrouve un Article complet par son identifiant."""
+        ligne = self._conn.execute(
+            "SELECT id, code, numero FROM articles WHERE id = ?",
+            (article_id,),
+        ).fetchone()
+        if ligne is None:
+            return None
+
+        versions_rows = self._conn.execute(
+            "SELECT numero, date_debut, date_fin, texte, statut, source "
+            "FROM versions WHERE article_id = ? ORDER BY date_debut",
+            (article_id,),
+        ).fetchall()
+
+        versions = [
+            VersionArticle(
+                article_id=IdentifiantLegifrance(valeur=article_id),
+                numero=r["numero"],
+                date_debut=date.fromisoformat(r["date_debut"]),
+                date_fin=(
+                    date.fromisoformat(r["date_fin"]) if r["date_fin"] else None
+                ),
+                texte=r["texte"],
+                statut=StatutVersion(r["statut"]),
+                source=r["source"],
+            )
+            for r in versions_rows
+        ]
+
+        return Article(
+            id=IdentifiantLegifrance(valeur=ligne["id"]),
+            code=CodeJuridique(ligne["code"]),
+            numero=ligne["numero"],
+            versions=versions,
+        )
+
     def rechercher_texte(
         self,
         mots: str,

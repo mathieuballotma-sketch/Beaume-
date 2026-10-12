@@ -5,7 +5,9 @@ from pathlib import Path
 import pymupdf
 import pytest
 
+from beaume.adapters.depot_sqlite import DepotSQLite
 from beaume.adapters.extracteur_pdf import ExtracteurPDF
+from beaume.adapters.source_fichier_local import SourceFichierLocal
 from beaume.application.analyse_dossier import (
     AnalyseDossier,
     ErreurAnalyse,
@@ -57,6 +59,15 @@ def _registre() -> RegistreExtracteurs:
     r = RegistreExtracteurs()
     r.enregistrer(ExtracteurPDF())
     return r
+
+
+FIXTURE = Path(__file__).parent.parent / "fixtures" / "articles_test.json"
+
+
+def _depot_vide(tmp_path):
+    depot = DepotSQLite(tmp_path / "legi.sqlite")
+    depot.enregistrer(SourceFichierLocal(FIXTURE).charger())
+    return depot
 
 
 def test_extraire_json_nu():
@@ -126,7 +137,7 @@ def test_parse_analyse_minimal():
 
 def test_analyse_dossier_vide(tmp_path):
     gen = FauxGenerateur('{"contexte": "vide"}')
-    a = AnalyseDossier(_registre(), FauxChercheur(), gen)
+    a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
     resultat = a.analyser(tmp_path, date(2024, 1, 1))
     assert resultat.est_vide() or resultat.contexte == "vide"
     assert len(gen.appels) == 0
@@ -137,7 +148,7 @@ def test_analyse_dossier_avec_un_pdf(tmp_path):
 
     reponse_json = '{"contexte": "Un salarie conteste son licenciement.", "parties": ["Le salarie"], "demandes": ["Contestation"], "problemes_juridiques": ["Motif"], "citations": []}'
     gen = FauxGenerateur(reponse_json)
-    a = AnalyseDossier(_registre(), FauxChercheur(), gen)
+    a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
     resultat = a.analyser(tmp_path, date(2024, 1, 1))
 
     assert "conteste" in resultat.contexte
@@ -148,7 +159,7 @@ def test_analyse_dossier_avec_un_pdf(tmp_path):
 def test_analyse_dossier_reponse_illisible(tmp_path):
     _make_pdf(tmp_path / "lettre.pdf", "Contenu quelconque.")
     gen = FauxGenerateur("Je ne sais pas repondre.")
-    a = AnalyseDossier(_registre(), FauxChercheur(), gen)
+    a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
     resultat = a.analyser(tmp_path, date(2024, 1, 1))
     assert resultat.est_vide()
 
@@ -156,7 +167,7 @@ def test_analyse_dossier_reponse_illisible(tmp_path):
 def test_analyse_dossier_prompt_contient_date(tmp_path):
     _make_pdf(tmp_path / "lettre.pdf", "Test.")
     gen = FauxGenerateur('{"contexte": ""}')
-    a = AnalyseDossier(_registre(), FauxChercheur(), gen)
+    a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
     a.analyser(tmp_path, date(2024, 6, 15))
     prompt, _ = gen.appels[0]
     assert "2024-06-15" in prompt
@@ -167,6 +178,6 @@ def test_analyse_dossier_chercheur_appele_par_chunk(tmp_path):
     _make_pdf(tmp_path / "a.pdf", "Contenu A suffisamment long pour un chunk.")
     chercheur = FauxChercheur()
     gen = FauxGenerateur('{"contexte": ""}')
-    a = AnalyseDossier(_registre(), chercheur, gen)
+    a = AnalyseDossier(_registre(), chercheur, gen, _depot_vide(tmp_path))
     a.analyser(tmp_path, date(2024, 1, 1))
     assert len(chercheur.appels) >= 1

@@ -27,7 +27,7 @@ class PipelineAnalyse:
         depot: DepotArticles,
         verificateur: VerificateurCitations,
     ) -> None:
-        self.analyseur = AnalyseDossier(registre, chercheur, generateur)
+        self.analyseur = AnalyseDossier(registre, chercheur, generateur, depot)
         self.depot = depot
         self.verificateur = verificateur
 
