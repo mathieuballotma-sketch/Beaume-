@@ -6,6 +6,7 @@ from pathlib import Path
 
 from beaume.application.lecteur_dossier import LecteurDossier
 from beaume.application.prompts import construire_prompt
+from beaume.application.selecteur_chunks import SelecteurChunks
 from beaume.legal.analyse import Analyse
 from beaume.legal.model import Citation, CodeJuridique
 from beaume.ports.chercheur_articles import ChercheurArticles
@@ -78,6 +79,7 @@ class AnalyseDossier:
         chercheur: ChercheurArticles,
         generateur: Generateur,
         depot: DepotArticles,
+        selecteur: SelecteurChunks | None = None,
         taille_chunk: int = 600,
         chevauchement: int = 80,
         limite_articles: int = 5,
@@ -90,6 +92,7 @@ class AnalyseDossier:
         self.chercheur = chercheur
         self.generateur = generateur
         self.depot = depot
+        self.selecteur = selecteur or SelecteurChunks()
         self.limite_articles = limite_articles
 
     def _enrichir_articles(self, resultats) -> list:
@@ -111,18 +114,21 @@ class AnalyseDossier:
         dossier = Path(dossier)
         resultat = self.lecteur.lire(dossier)
 
+        all_chunks = []
         chunks_texte = []
         for fichier in resultat.fichiers:
             if not fichier.ok:
                 continue
             for chunk in fichier.chunks:
+                all_chunks.append(chunk)
                 chunks_texte.append(chunk.texte)
 
         if not chunks_texte:
             log.info("Aucun chunk exploitable dans %s", dossier)
             return Analyse(date_reference=date_reference)
 
-        texte_dossier = "\n\n".join(chunks_texte)
+        selection = self.selecteur.selectionner(all_chunks)
+        texte_dossier = self.selecteur.formater_pour_prompt(selection)
 
         # On interroge le chercheur pour chaque chunk. Pour l'instant
         # on n'exploite pas encore les resultats dans le prompt
