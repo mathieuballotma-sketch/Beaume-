@@ -183,3 +183,33 @@ immédiatement.
 **Phase 5c** : pipeline d'ingestion `dossier → chunks → encodeur → index`.
 À reprendre dans Cursor. Le fichier `ingestion.py` et son test seront créés
 ensemble, proprement.
+## 2026-10-12 — Premier test bout-en-bout reussi
+
+**Premier dossier client traite de bout en bout.**
+
+Dossier : `data/inbox/dossier_test_001/lettre_client.pdf` (1950 octets, 2 pages)
+Date de reference : 2026-10-12
+Pipeline : extraction PDF -> chunking -> analyse LLM -> verification -> Markdown
+
+**Resultats** :
+- 1385 caracteres extraits, 3 chunks
+- 4 articles candidats trouves dans le corpus
+- LLM qwen2.5:7b-instruct : 1044 tokens prompt, 378 tokens reponse
+- **22.58 secondes au total** (99.99% dans le LLM)
+- 2 citations valides, 0 rejetees
+- Rapport ecrit dans `data/out/dossier_test_001_analyse.md`
+
+**Ce qui marche** :
+- Le pipeline va de bout en bout sans erreur.
+- Le LLM produit du JSON valide du premier coup.
+- Le verificateur confirme les 2 citations (L. 1232-1, L. 1152-1).
+- Le Markdown est lisible et professionnel.
+
+**Ce qu'on doit ameliorer** :
+- Corpus trop limite (5 articles), enrichir a 20-30.
+- Le LLM garde les accents dans l'extrait cite alors que le corpus n'en a pas
+  (cosmetique, le verificateur normalise).
+- Petite faute de grammaire dans une question ("Sont-les agissements" au lieu
+  de "Les agissements sont-ils"), a corriger dans le prompt.
+
+**Verification** : 180 tests verts, 0 skipped (Ollama operationnel).
