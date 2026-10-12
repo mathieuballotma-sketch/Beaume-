@@ -1,0 +1,38 @@
+{
+    "articles": [
+      {
+        "id": "LEGIARTI000006900898",
+        "code": "code_travail",
+        "numero": "L. 1234-1",
+        "versions": [
+          {
+            "article_id": "LEGIARTI000006900898",
+            "numero": "L. 1234-1",
+            "date_debut": "2016-08-10",
+            "date_fin": null,
+            "texte": "Le contrat de travail a duree indeterminee peut toujours cesser par la volonte d'une des parties contractantes.",
+            "statut": "en_vigueur",
+            "source": "legifrance"
+          }
+        ],
+        "url_legifrance": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000006900898"
+      },
+      {
+        "id": "LEGIARTI000033020517",
+        "code": "code_civil",
+        "numero": "1240",
+        "versions": [
+          {
+            "article_id": "LEGIARTI000033020517",
+            "numero": "1240",
+            "date_debut": "2016-10-01",
+            "date_fin": null,
+            "texte": "Tout fait quelconque de l'homme, qui cause a autrui un dommage, oblige celui par la faute duquel il est arrive a le reparer.",
+            "statut": "en_vigueur",
+            "source": "legifrance"
+          }
+        ],
+        "url_legifrance": "https://www.legifrance.gouv.fr/codes/article_lc/LEGIARTI000033020517"
+      }
+    ]
+  }
