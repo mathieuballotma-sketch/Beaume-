@@ -124,7 +124,11 @@ class SelecteurChunks:
         self.score_min = score_min
 
     def selectionner(self, chunks: list[Chunk]) -> SelectionChunks:
-        """Retourne la selection par question, avec tracabilite."""
+        """Selectionne les chunks, chacun assigne a sa question dominante.
+
+        Chaque chunk apparait dans UNE SEULE question : celle ou son
+        score est le plus eleve. Puis on garde le top N par question.
+        """
         if not chunks:
             return SelectionChunks(
                 par_question={q: [] for q in SIGNATURES},
@@ -135,27 +139,40 @@ class SelecteurChunks:
         # Pre-calcul des textes normalises
         textes_norm = {c.index: _normaliser(c.texte) for c in chunks}
 
-        par_question: dict[str, list[ChunkSelectionne]] = {}
-        ids_utilises: set[int] = set()
+        # Pour chaque chunk, calculer son score sur chaque question
+        # et l'assigner a la question ou il score le mieux.
+        par_question: dict[str, list[ChunkSelectionne]] = {
+            q: [] for q in SIGNATURES
+        }
 
-        for question, signature in SIGNATURES.items():
-            scores = [
-                (c, _score_question(textes_norm[c.index], signature))
-                for c in chunks
-            ]
-            scores.sort(key=lambda x: -x[1])
-            top = [
-                ChunkSelectionne(chunk=c, question=question, score=s)
-                for c, s in scores[: self.top]
-                if s > self.score_min
-            ]
-            par_question[question] = top
-            ids_utilises.update(sel.chunk.index for sel in top)
+        for chunk in chunks:
+            scores = {
+                q: _score_question(textes_norm[chunk.index], sig)
+                for q, sig in SIGNATURES.items()
+            }
+            # Question dominante
+            question_dom = max(scores, key=scores.get)
+            score_dom = scores[question_dom]
+            if score_dom > self.score_min:
+                par_question[question_dom].append(
+                    ChunkSelectionne(
+                        chunk=chunk,
+                        question=question_dom,
+                        score=score_dom,
+                    )
+                )
+
+        # Trier chaque question par score decroissant, garder top N
+        for q in par_question:
+            par_question[q].sort(key=lambda x: -x.score)
+            par_question[q] = par_question[q][: self.top]
+
+        total_utilises = sum(len(v) for v in par_question.values())
 
         return SelectionChunks(
             par_question=par_question,
             chunks_totaux=len(chunks),
-            chunks_utilises=len(ids_utilises),
+            chunks_utilises=total_utilises,
         )
 
     def formater_pour_prompt(self, selection: SelectionChunks) -> str:
