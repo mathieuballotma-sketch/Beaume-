@@ -16,19 +16,20 @@ Aucune donnée client ne quitte jamais la machine.
 | Phase | Description | État |
 |---|---|---|
 | 0 | Fondations | Terminé |
+| 7a/7b/7c | Ports LLM + chercheur + analyse | Terminé |
 | 1 | Extracteur PDF | Terminé |
 | 2 | Lecteur de dossier | Terminé |
 | 3 | Chunker | Terminé |
 | 4 | Chunking intégré | Terminé |
 | 5a | Encodeur | Terminé |
 | 5b | Index vectoriel | Terminé |
-| 5c | Pipeline d'ingestion | En cours |
-| 6 | Corpus légal | À venir |
-| 7 | RAG | À venir |
-| 8 | Vérificateur de citations | À venir |
-| 9 | Génération de document | À venir |
+| 5c | Pipeline d'ingestion | Terminé |
+| 6 | Corpus légal | Terminé |
+| 7 | RAG | Terminé |
+| 8 | Vérificateur de citations | Terminé |
+| 9 | Génération de document | Terminé |
 
-Tests : 70 passed, 1 skipped.
+Tests : 200 passed, 0 skipped.
 
 ## Architecture
 
