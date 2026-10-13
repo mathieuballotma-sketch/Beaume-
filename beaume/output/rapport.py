@@ -29,6 +29,13 @@ def _lien_legifrance(article_id: str) -> str:
     return f"https://www.legifrance.gouv.fr/codes/article_lc/{article_id}"
 
 
+def _tronquer(texte: str, longueur: int = 300) -> str:
+    t = texte.strip()
+    if len(t) <= longueur:
+        return t
+    return t[:longueur].rstrip() + "..."
+
+
 def _formater_verification(v: ResultatVerification) -> str:
     c = v.citation
     lignes = [
@@ -53,12 +60,24 @@ def _formater_verification(v: ResultatVerification) -> str:
 
 
 def _formater_rejet(v: ResultatVerification) -> str:
+    """Formate une citation rejetee avec, si disponibles, l'extrait
+    propose par le LLM et le texte officiel — pour permettre a l'avocat
+    de comprendre pourquoi la citation a ete rejetee."""
     c = v.citation
-    return (
-        f"- **{c.code.value} - Article {c.numero}** "
-        f"(au {c.date_reference.isoformat()}) : "
-        f"{v.statut.value} - {v.message}"
-    )
+    lignes = [
+        f"### {c.code.value} - Article {c.numero} (au {c.date_reference.isoformat()})",
+        "",
+        f"- **Verdict** : `{v.statut.value}`",
+        f"- **Raison** : {v.message}",
+    ]
+    if c.extrait:
+        lignes.append(f"- **Extrait propose par le modele** : *{_tronquer(c.extrait)}*")
+    if v.version:
+        lignes.append(
+            f"- **Texte officiel (extrait)** : *{_tronquer(v.version.texte)}*"
+        )
+    lignes.append("")
+    return "\n".join(lignes)
 
 
 def rendre_markdown(rapport: Rapport) -> str:
