@@ -80,6 +80,14 @@ class VerificateurStandard:
                 message="Article abroge a cette date.",
             )
 
+        if not citation.extrait or not citation.extrait.strip():
+            return ResultatVerification(
+                statut=StatutVerification.EXTRAIT_MANQUANT,
+                citation=citation,
+                version=version,
+                message="Aucun extrait fourni : citation non verifiable.",
+            )
+
         if citation.extrait:
             extrait_norm = _normaliser(citation.extrait)
             texte_norm = _normaliser(version.texte)
