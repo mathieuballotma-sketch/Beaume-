@@ -1,11 +1,29 @@
 """Adaptateur PDF : respecte le contrat Extracteur du port.
 
-L'extraction bas niveau vit dans beaume/extraction/pdf.py.
-Ici on ne fait que l'adapter au contrat du port.
+Utilise pymupdf pour extraire le texte d'un PDF natif (non scanne).
 """
 from pathlib import Path
 
-from beaume.extraction.pdf import extract_pdf_text
+import pymupdf
+
+
+def _extraire_texte(path: Path) -> str:
+    """Extrait le texte d'un PDF page par page.
+
+    Retourne une chaine unique, pages separees par une ligne vide.
+    Peut retourner une chaine vide si le PDF est un scan sans OCR.
+    """
+    chemin = Path(path)
+    if not chemin.exists():
+        raise FileNotFoundError(f"PDF introuvable : {chemin}")
+
+    doc = pymupdf.open(chemin)
+    try:
+        pages = [page.get_text() for page in doc]
+    finally:
+        doc.close()
+
+    return "\n\n".join(pages)
 
 
 class ExtracteurPDF:
@@ -15,4 +33,4 @@ class ExtracteurPDF:
         return path.suffix.lower() == ".pdf"
 
     def extraire(self, path: Path) -> str:
-        return extract_pdf_text(path)
+        return _extraire_texte(path)
