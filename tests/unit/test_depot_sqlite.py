@@ -121,7 +121,8 @@ def test_trouver_article_present(tmp_path):
     assert res is not None
     article, version = res
     assert article.code == CodeJuridique.CODE_TRAVAIL
-    assert version.numero == "L. 1234-1"
+    # Le numero est normalise en format DILA a l'insertion
+    assert version.numero == "L1234-1"
     assert "contrat de travail" in version.texte
 
 

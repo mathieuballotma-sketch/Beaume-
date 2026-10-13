@@ -77,8 +77,8 @@ def test_corpus_reel_contient_les_bons_codes(tmp_path):
         row for row in _lister_codes(depot)
     }
     assert ("code_civil", "1240") in codes
-    assert ("code_travail", "L. 1234-1") in codes
-    assert ("code_travail", "L. 1152-1") in codes
+    assert ("code_travail", "L1234-1") in codes
+    assert ("code_travail", "L1152-1") in codes
 
 
 @pytestmark_reel

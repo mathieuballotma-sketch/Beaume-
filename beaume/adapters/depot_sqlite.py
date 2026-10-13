@@ -11,6 +11,7 @@ from datetime import date
 from pathlib import Path
 
 from beaume.legal.ids import IdentifiantLegifrance
+from beaume.legal.normalisation import normaliser_numero
 from beaume.legal.model import (
     Article,
     CodeJuridique,
@@ -81,7 +82,11 @@ class DepotSQLite:
             curseur.execute(
                 "INSERT OR REPLACE INTO articles (id, code, numero) "
                 "VALUES (?, ?, ?)",
-                (article.id.valeur, article.code.value, article.numero),
+                (
+                    article.id.valeur,
+                    article.code.value,
+                    normaliser_numero(article.numero),
+                ),
             )
             # On purge les versions precedentes de cet article
             curseur.execute(
@@ -96,7 +101,7 @@ class DepotSQLite:
                     ") VALUES (?, ?, ?, ?, ?, ?, ?)",
                     (
                         v.article_id.valeur,
-                        v.numero,
+                        normaliser_numero(v.numero),
                         v.date_debut.isoformat(),
                         v.date_fin.isoformat() if v.date_fin else None,
                         v.texte,
@@ -149,6 +154,7 @@ class DepotSQLite:
         date_reference: date,
     ) -> tuple[Article, VersionArticle] | None:
         iso = date_reference.isoformat()
+        numero = normaliser_numero(numero)
         ligne = self._conn.execute(
             """
             SELECT a.id AS article_id, a.code AS code, a.numero AS numero,
