@@ -2,8 +2,22 @@
 name = "beaume"
 version = "0.0.1"
 description = "Assistant juridique 100% local pour avocats"
+readme = "README.md"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "pydantic>=2.6,<3",
+    "lancedb>=0.13,<1",
+    "pyarrow>=15",
+    "pymupdf>=1.24,<2",
+    "ollama>=0.3,<1",
+    "datasets>=2.20,<6",
+    "huggingface-hub>=0.23,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<9",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -12,6 +26,9 @@ filterwarnings = [
     "ignore::DeprecationWarning:pymupdf",
     "ignore:builtin type Swig",
 ]
+
+[tool.setuptools.packages.find]
+include = ["beaume*"]
 
 [build-system]
 requires = ["setuptools>=68"]
