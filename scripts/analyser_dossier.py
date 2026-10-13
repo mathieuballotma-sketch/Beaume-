@@ -5,11 +5,13 @@ Usage :
     PYTHONPATH=. python scripts/analyser_dossier.py data/inbox/dossier_001 2024-01-01
     PYTHONPATH=. python scripts/analyser_dossier.py data/inbox/dossier_001
 
-Le script :
-1. Charge le corpus legal dans SQLite.
-2. Construit le pipeline complet (analyse + verification).
-3. Produit out/<nom_dossier>_analyse.md.
+Base de production : data/vector/legi_full.sqlite (25 767 articles).
+Si absente, le script refuse de tourner et indique quoi faire.
+
+Mode demo (tests rapides, 5 articles) :
+    BEAUME_CORPUS_DEMO=1 python scripts/analyser_dossier.py <dossier>
 """
+import os
 import sys
 from datetime import date
 from pathlib import Path
@@ -28,6 +30,8 @@ from beaume.utils.profiler import profil_actif
 
 log = get_logger("analyser_dossier")
 
+_VAR_DEMO = "BEAUME_CORPUS_DEMO"
+
 
 def _construire_registre() -> RegistreExtracteurs:
     r = RegistreExtracteurs()
@@ -36,17 +40,48 @@ def _construire_registre() -> RegistreExtracteurs:
 
 
 def _construire_depot() -> DepotSQLite:
+    """Ouvre la base SQLite du corpus.
+
+    Par defaut : base de production legi_full.sqlite (25 767 articles).
+    Si absente : erreur fatale (jamais de rapport vide silencieux).
+
+    Mode demo (BEAUME_CORPUS_DEMO=1) : utilise legi.sqlite construit
+    depuis corpus_initial.json. Rapide (5 articles), pour les tests.
+    """
+    if os.environ.get(_VAR_DEMO) == "1":
+        return _construire_depot_demo()
+
+    chemin_db = paths.VECTOR / "legi_full.sqlite"
+    if not chemin_db.exists():
+        raise SystemExit(
+            f"Corpus complet absent : {chemin_db}\n"
+            "\n"
+            "Deux options :\n"
+            "  1. Construire le corpus (recommande) :\n"
+            "       PYTHONPATH=. python scripts/telecharger_corpus.py\n"
+            "  2. Utiliser le petit corpus de demo (5 articles) :\n"
+            f"       {_VAR_DEMO}=1 python scripts/analyser_dossier.py <dossier>\n"
+        )
+
+    depot = DepotSQLite(chemin_db)
+    log.info("Corpus PRODUCTION : %d articles", depot.compter())
+    return depot
+
+
+def _construire_depot_demo() -> DepotSQLite:
+    """Base demo construite depuis corpus_initial.json (5 articles)."""
+    source_json = paths.LEGAL / "corpus_initial.json"
+    if not source_json.exists():
+        raise SystemExit(
+            f"Corpus demo introuvable : {source_json}\n"
+            f"Desactive {_VAR_DEMO} ou restaure le fichier."
+        )
+
     chemin_db = paths.VECTOR / "legi.sqlite"
     depot = DepotSQLite(chemin_db)
-
-    source_json = paths.LEGAL / "corpus_initial.json"
-    if source_json.exists():
-        depot.vider()
-        depot.enregistrer(SourceFichierLocal(source_json).charger())
-        log.info("Corpus charge : %d articles", depot.compter())
-    else:
-        log.warning("Corpus absent : %s", source_json)
-
+    depot.vider()
+    depot.enregistrer(SourceFichierLocal(source_json).charger())
+    log.info("Corpus DEMO : %d articles", depot.compter())
     return depot
 
 
