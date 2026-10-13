@@ -33,3 +33,29 @@
 - ECHEC accessible depuis n'importe quel état non terminal
 - Transitions illégales = exception levée
 - Historique horodaté conservé
+
+## 2026-10-13 — HUD comme assistant, pas comme application
+- L'avocat dépose son dossier dans la fenêtre HUD.
+- Dès que l'analyse démarre, la fenêtre se replie dans un coin de l'écran.
+- À chaque étape, le texte affiché décrit précisément ce que Beaume fait
+  (ex : « Recherche des articles applicables… »).
+- Signal discret : un point s'affiche au démarrage d'une action. Pas
+  d'animation coûteuse en CPU/GPU.
+- Objectif : habituer l'avocat à une **présence d'assistance**, pas à
+  l'ouverture d'une application.
+- Conséquence technique : le pipeline doit émettre des événements
+  d'étape vers le HUD (aujourd'hui, il log dans un fichier). À prévoir
+  une fois le noyau fiable.
+
+## 2026-10-13 — Priorité fiabilité, puis vitesse
+- Objectif : Beaume rend un résumé fiable d'un dossier client, avec
+  articles cités, liens Legifrance et preuves vérifiables.
+- **Fiabilité d'abord** : on ne cherche pas à être rapide tant que le
+  taux de réussite n'est pas mesuré et acceptable.
+- **Vitesse ensuite** : une fois la fiabilité mesurée, on optimise le
+  temps là où il se perd réellement (mesure avant optimisation).
+- Une analyse peut prendre plusieurs minutes si l'avocat voit ce qui se
+  passe et comprend pourquoi. Un outil rapide mais faux est inutilisable.
+- Conséquence : on ne peut pas dire « Beaume est fiable » sans un jeu
+  de test et un chiffre. Le harnais de mesure est le prérequis de toute
+  décision d'optimisation.
