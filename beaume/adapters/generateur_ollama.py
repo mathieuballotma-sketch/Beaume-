@@ -32,7 +32,7 @@ class GenerateurOllama:
     def generer(
         self,
         prompt: str,
-        temperature: float = 0.2,
+        temperature: float = 0.0,
     ) -> ReponseLLM:
         debut = time.perf_counter()
         reponse = ollama.generate(

@@ -151,7 +151,7 @@ class AnalyseDossier:
             texte_dossier, articles_candidats, date_reference,
         )
 
-        reponse = self.generateur.generer(prompt, temperature=0.1)
+        reponse = self.generateur.generer(prompt, temperature=0.0)
         log.info(
             "LLM %s : %d tokens reponse en %.2f s",
             reponse.modele,
