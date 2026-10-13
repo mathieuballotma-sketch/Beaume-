@@ -101,6 +101,7 @@ class StatutVerification(str, Enum):
     VERSION_INCORRECTE = "version_incorrecte"
     ABROGE = "abroge"
     TEXTE_DIFFERENT = "texte_different"
+    EXTRAIT_MANQUANT = "extrait_manquant"
 
 
 class ResultatVerification(BaseModel, frozen=True):

@@ -17,6 +17,9 @@ from beaume.ports.verificateur_citations import VerificateurCitations
 
 FIXTURE = Path(__file__).parent.parent / "fixtures" / "articles_test.json"
 
+EXTRAIT_1240 = "qui cause a autrui un dommage"
+EXTRAIT_L1234_1 = "peut toujours cesser par la volonte d'une des parties contractantes"
+
 
 def _verificateur(tmp_path) -> VerificateurStandard:
     depot = DepotSQLite(tmp_path / "legi.sqlite")
@@ -40,11 +43,34 @@ def test_verificateur_respecte_contrat(tmp_path):
 
 def test_article_existe_version_valide(tmp_path):
     v = _verificateur(tmp_path)
-    c = _citation(CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1))
+    c = _citation(
+        CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1),
+        extrait=EXTRAIT_1240,
+    )
     res = v.verifier(c)
     assert res.statut == StatutVerification.VALIDE
     assert res.est_valide is True
     assert res.version is not None
+
+
+def test_article_sans_extrait_est_rejete(tmp_path):
+    """Une citation sans extrait n'est pas verifiable : EXTRAIT_MANQUANT."""
+    v = _verificateur(tmp_path)
+    c = _citation(CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1))
+    res = v.verifier(c)
+    assert res.statut == StatutVerification.EXTRAIT_MANQUANT
+    assert res.est_valide is False
+
+
+def test_article_avec_extrait_vide_est_rejete(tmp_path):
+    """Un extrait vide (espaces) compte comme absent."""
+    v = _verificateur(tmp_path)
+    c = _citation(
+        CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1),
+        extrait="   ",
+    )
+    res = v.verifier(c)
+    assert res.statut == StatutVerification.EXTRAIT_MANQUANT
 
 
 def test_article_existe_avec_extrait_correct(tmp_path):
@@ -85,7 +111,10 @@ def test_article_avant_toutes_versions(tmp_path):
 def test_article_apres_toutes_versions_sans_fin(tmp_path):
     """L'article 1240 est en vigueur sans date de fin."""
     v = _verificateur(tmp_path)
-    c = _citation(CodeJuridique.CODE_CIVIL, "1240", date(2099, 1, 1))
+    c = _citation(
+        CodeJuridique.CODE_CIVIL, "1240", date(2099, 1, 1),
+        extrait=EXTRAIT_1240,
+    )
     res = v.verifier(c)
     assert res.statut == StatutVerification.VALIDE
 
@@ -93,8 +122,14 @@ def test_article_apres_toutes_versions_sans_fin(tmp_path):
 def test_verifier_toutes_retourne_une_liste(tmp_path):
     v = _verificateur(tmp_path)
     citations = [
-        _citation(CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1)),
-        _citation(CodeJuridique.CODE_TRAVAIL, "L. 1234-1", date(2020, 1, 1)),
+        _citation(
+            CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1),
+            extrait=EXTRAIT_1240,
+        ),
+        _citation(
+            CodeJuridique.CODE_TRAVAIL, "L. 1234-1", date(2020, 1, 1),
+            extrait=EXTRAIT_L1234_1,
+        ),
         _citation(CodeJuridique.CODE_CIVIL, "9999", date(2020, 1, 1)),
     ]
     resultats = v.verifier_toutes(citations)
@@ -109,8 +144,10 @@ def test_melange_verdicts(tmp_path):
     v = _verificateur(tmp_path)
 
     cas = [
-        (_citation(CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1)),
-         StatutVerification.VALIDE),
+        (_citation(
+            CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1),
+            extrait=EXTRAIT_1240,
+        ), StatutVerification.VALIDE),
         (_citation(CodeJuridique.CODE_CIVIL, "9999", date(2020, 1, 1)),
          StatutVerification.INTROUVABLE),
         (_citation(CodeJuridique.CODE_CIVIL, "1240", date(1900, 1, 1)),
@@ -119,6 +156,8 @@ def test_melange_verdicts(tmp_path):
             CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1),
             extrait="invente totalement",
         ), StatutVerification.TEXTE_DIFFERENT),
+        (_citation(CodeJuridique.CODE_CIVIL, "1240", date(2020, 1, 1)),
+         StatutVerification.EXTRAIT_MANQUANT),
     ]
 
     for citation, attendu in cas:
