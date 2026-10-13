@@ -59,3 +59,88 @@
 - Conséquence : on ne peut pas dire « Beaume est fiable » sans un jeu
   de test et un chiffre. Le harnais de mesure est le prérequis de toute
   décision d'optimisation.
+
+## 2026-10-13 — Idées d'architecture notées (à explorer, pas encore actées)
+
+Ces idées sont enregistrées pour mémoire. Elles ne sont PAS des décisions
+engagées. Chacune sera rouverte quand les conditions seront réunies.
+
+### Calculateur d'adresse pour les numéros d'articles
+- Un numéro d'article (`L. 1233-3`) est un vecteur structuré :
+  nature / partie / livre / titre / chapitre / ordre.
+- On peut calculer une adresse binaire unique (entier 64 bits) à partir
+  de ce vecteur, sans recherche ni index textuel.
+- Gain : accès direct O(1), index 20x plus compact (8 octets vs ~1000
+  octets de texte).
+- S'applique à LEGI (codes structurés). Pas à JURI/JORF (numérotation
+  arbitraire).
+- Limites : renumérotation de 2008 (table de correspondance requise),
+  sous-articles `L. 1233-3-1`.
+- Déclencheur : à partir de ~500 000 articles (aujourd'hui 25 767 —
+  gain invisible).
+
+### Bitmap de présence (0/1)
+- Un bit par article possible : 1 = existe, 0 = abrogé/inexistant.
+- Permet la détection instantanée de nouveauté (0→1) et d'abrogation
+  (1→0).
+- Taille : 99 articles d'un chapitre = 13 octets.
+- Utile pour la veille quotidienne du corpus.
+
+### Hash de contenu (détection de changement)
+- Chaque version de texte a un hash (ex. xxHash64, 8 octets).
+- Comparaison entre deux syncs = détection instantanée des articles
+  modifiés.
+- Combiné au bitmap, permet un différentiel complet du corpus.
+
+### Découpage du corpus par zones
+- 3 niveaux superposables : par nature (LEGI/JURI/JORF), par domaine
+  (23 codes), par fréquence (hot/warm/cold).
+- Objectif : ne charger que la zone pertinente au dossier.
+- Un seul texte par article (pas de duplication), un index global, un
+  routeur par code juridique.
+- Déclencheur : à partir de 500 000+ articles.
+
+### Moteur de calcul déterministe (calculatrice de règles)
+- Au lieu que le LLM cherche les articles, un moteur de calcul applique
+  des règles logiques aux faits du dossier.
+- Le LLM ne sert plus qu'à la rédaction finale.
+- Idée explorée : encoder 10 règles du licenciement économique dans un
+  format standard, faire tourner le moteur sur 10 dossiers.
+- Trois formes possibles : calculatrice pure (déterministe), arbre
+  pondéré (score de certitude), hybride (structurel déterministe +
+  interprétatif laissé à l'avocat).
+- Change la nature du projet : application d'analyse → plateforme de
+  calcul juridique. Décision à prendre à froid.
+- Déclencheur : après stabilisation du corpus et du vérificateur.
+
+### Mémoire quotidienne qui s'efface (veille corpus)
+- Beaume regarde les nouveaux textes chaque jour.
+- À la fin de la journée, il efface ce qu'il a vu et recommence.
+- Avance sans reculer (pas d'accumulation).
+- Source : dump DILA officiel (LEGI + JURI + JORF), mise à jour
+  quotidienne par l'État. Pas de scraping Légifrance (interdit par CGU).
+- Combiné au bitmap et au hash : détection de nouveauté et de
+  changement automatique.
+
+### Notification d'activité détectée
+- Si Beaume voit un nouveau document dans un dossier, il demande
+  l'autorisation avant de le lire.
+- Message : « J'ai vu un nouveau fichier dans X, je peux l'analyser ?
+  Voilà pourquoi. »
+- Pas de lecture silencieuse. L'avocat reste maître.
+- À arbitrer : surveillance continue (watchdog) ou surveillance limitée
+  aux dossiers déjà déposés.
+
+### Mise à jour sans friction
+- L'avocat ne manipule rien.
+- Beaume propose, l'avocat accepte (ou pas). Jamais l'inverse.
+- Si une mise à jour existe, Beaume l'annonce, l'avocat choisit.
+
+### Corpus : source DILA officielle
+- Le dump DILA (echanges.dila.gouv.fr/OPENDATA) contient tout :
+  LEGI (~500k articles), JORF (~2M textes), JURI (~500k décisions),
+  KALI (~50k conventions), CNIL (~10k délibérations).
+- Total ~3M documents.
+- Gratuit, officiel, licence Etalab.
+- Pas de scraping Légifrance (contraire aux CGU, pas nécessaire puisque
+  DILA fournit tout).
