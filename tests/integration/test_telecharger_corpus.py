@@ -8,11 +8,20 @@ from __future__ import annotations
 import sqlite3
 import subprocess
 import sys
+from datetime import date
 from pathlib import Path
 
 import pytest
 
+from beaume.adapters.depot_sqlite import DepotSQLite
 from beaume.config import paths
+from beaume.legal.ids import IdentifiantLegifrance
+from beaume.legal.model import (
+    Article,
+    CodeJuridique,
+    StatutVersion,
+    VersionArticle,
+)
 
 
 DATASET_LEGI = paths.LEGAL / "legi_2025"
@@ -30,6 +39,34 @@ def _compter_articles(chemin_db: Path) -> int:
         return conn.execute("SELECT COUNT(*) FROM articles").fetchone()[0]
     finally:
         conn.close()
+
+
+def _mini_base(chemin_db: Path) -> None:
+    """Cree une base SQLite exploitable avec 2 articles."""
+    depot = DepotSQLite(chemin_db)
+    depot.enregistrer([
+        _article("LEGIARTI000000000001", CodeJuridique.CODE_CIVIL, "1240"),
+        _article("LEGIARTI000000000002", CodeJuridique.CODE_TRAVAIL, "L. 1234-1"),
+    ])
+
+
+def _article(article_id: str, code: CodeJuridique, numero: str) -> Article:
+    identifiant = IdentifiantLegifrance(valeur=article_id)
+    version = VersionArticle(
+        article_id=identifiant,
+        numero=numero,
+        date_debut=date(2020, 1, 1),
+        date_fin=None,
+        texte="Texte de test.",
+        statut=StatutVersion.EN_VIGUEUR,
+        source="test",
+    )
+    return Article(
+        id=identifiant,
+        code=code,
+        numero=numero,
+        versions=[version],
+    )
 
 
 def test_telecharger_corpus_limite(tmp_path: Path) -> None:
@@ -56,9 +93,14 @@ def test_telecharger_corpus_limite(tmp_path: Path) -> None:
 
 
 def test_telecharger_corpus_idempotent(tmp_path: Path) -> None:
-    """Relancer le script sur une base existante ne la reconstruit pas."""
+    """Relancer le script sur une base existante ne la reconstruit pas.
+
+    Verifie que la base existante reste exploitable : lisible, avec
+    ses 2 articles intacts. Un placeholder binaire ne prouverait rien.
+    """
     chemin_db = tmp_path / "test.sqlite"
-    chemin_db.write_bytes(b"placeholder")
+    _mini_base(chemin_db)
+    assert _compter_articles(chemin_db) == 2
 
     result = subprocess.run(
         [
@@ -73,5 +115,6 @@ def test_telecharger_corpus_idempotent(tmp_path: Path) -> None:
 
     assert result.returncode == 0
     assert "deja presente" in result.stdout
-    # La base placeholder doit etre intacte (pas reconstruite).
-    assert chemin_db.read_bytes() == b"placeholder"
+
+    # La base doit toujours etre lisible et contenir les 2 articles.
+    assert _compter_articles(chemin_db) == 2
