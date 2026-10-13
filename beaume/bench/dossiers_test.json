@@ -1,0 +1,39 @@
+{
+  "_meta": {
+    "description": "Jeu de test minimal pour mesurer la fiabilite de Beaume sur des dossiers de licenciement economique. Chaque dossier contient un texte (converti en PDF a la volee) et les articles attendus (must_cite). Un dossier est reussi si AU MOINS UN article attendu figure parmi les citations valides.",
+    "version": 1,
+    "categorie": "licenciement_economique"
+  },
+  "dossiers": [
+    {
+      "id": "BE-LECO-001",
+      "texte": "Monsieur le President, je me permets de vous ecrire pour vous exposer ma situation. Je suis salarie depuis huit ans dans une entreprise de batiment de 45 salaries. Mon employeur vient de m'annoncer mon licenciement en invoquant des difficultes economiques liees a une baisse significative du chiffre d'affaires sur trois trimestres consecutifs. Je conteste ce motif car le chiffre d'affaires a en realite progresse de 4% sur la meme periode. Je souhaite savoir quelles sont les conditions strictes qui permettent a un employeur d'invoquer le motif economique.",
+      "must_cite": ["L.1233-3"],
+      "wall_clock_ms_max": 120000
+    },
+    {
+      "id": "BE-LECO-002",
+      "texte": "Bonjour Maitre, je travaille dans une petite entreprise de six salaries. Mon patron veut licencier deux personnes pour motif economique dans la meme periode de trente jours. Il nous a dit qu'il n'avait pas besoin de mettre en place un plan de sauvegarde de l'emploi. Est-ce exact ? Je voudrais comprendre la procedure applicable dans une entreprise de cette taille.",
+      "must_cite": ["L.1233-2", "L.1233-1"],
+      "wall_clock_ms_max": 120000
+    },
+    {
+      "id": "BE-LECO-003",
+      "texte": "Maitre, je viens d'etre licencie pour motif economique. Mon employeur invoque une reorganisation necessaire pour sauvegarder la competitivite de l'entreprise. Mais je constate qu'il a embauche trois nouvelles personnes le mois precedent mon licenciement. Cela me parait contradictoire. Puis-je contester la realite du motif economique et sur quels fondements ?",
+      "must_cite": ["L.1233-3"],
+      "wall_clock_ms_max": 120000
+    },
+    {
+      "id": "BE-LECO-004",
+      "texte": "Monsieur, j'ai ete licencie pour motif economique dans une entreprise qui compte plusieurs etablissements en France. Mon employeur m'a dit qu'il n'y avait aucun poste disponible pour me reclasser. Mais j'ai appris que des postes etaient ouverts dans un autre etablissement du meme groupe. Je voudrais savoir quel est le perimetre exact de l'obligation de reclassement de l'employeur avant un licenciement economique.",
+      "must_cite": ["L.1233-4"],
+      "wall_clock_ms_max": 120000
+    },
+    {
+      "id": "BE-LECO-005",
+      "texte": "Maitre, cinq personnes ont ete licenciees pour motif economique dans mon entreprise. J'ai quinze ans d'anciennete et deux enfants a charge. D'autres personnes moins anciennes et sans charge de famille ont ete conservees a ma place. J'ai le sentiment que l'ordre des licenciements n'a pas ete respecte. Quels sont les criteres que l'employeur doit appliquer pour determiner l'ordre des licenciements ?",
+      "must_cite": ["L.1233-5"],
+      "wall_clock_ms_max": 120000
+    }
+  ]
+}
