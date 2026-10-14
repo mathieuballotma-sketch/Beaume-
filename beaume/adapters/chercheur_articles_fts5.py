@@ -19,7 +19,7 @@ class ChercheurArticlesFTS5:
     def __init__(
         self,
         depot: DepotArticles,
-        max_mots_cles: int = 15,
+        max_mots_cles: int = 200,
     ) -> None:
         self.depot = depot
         self.max_mots_cles = max_mots_cles
