@@ -144,3 +144,40 @@ engagées. Chacune sera rouverte quand les conditions seront réunies.
 - Gratuit, officiel, licence Etalab.
 - Pas de scraping Légifrance (contraire aux CGU, pas nécessaire puisque
   DILA fournit tout).
+
+## 2026-10-14 — Modèle de base + LoRA adapters par domaine
+- **Un seul modèle de base** (Romulus ou équivalent, ~8 Go) partagé
+  par tous les utilisateurs.
+- **Un LoRA adapter par domaine** (~200 Mo chacun). Chaque adapter
+  spécialise le modèle sur un domaine (travail, civil, consommation…).
+- **Chargement à la demande** : le modèle de base reste en RAM, seul
+  l'adapter actif est chargé (~1 s de bascule).
+- **RAM active** : ~8,2 Go au lieu de 80 Go (10 adaptateurs séparés).
+- Coût d'entraînement par adapter : 4-6 h sur GPU gratuit (Kaggle).
+
+### Détection du domaine avant l'appel LLM
+Le LLM ne devine jamais le domaine. Il le reçoit :
+1. Le dossier est découpé en chunks (déjà fait).
+2. Un détecteur analyse les chunks AVANT l'appel LLM.
+3. Le détecteur choisit le domaine.
+4. Le LoRA correspondant est chargé.
+5. Le LLM est appelé avec l'adapter déjà actif.
+
+### Trois niveaux de détection (progressif)
+1. **Mots-clés** (dictionnaire `{mot: domaine}`) — 0 ms, 60-70 %.
+   Premier niveau à implémenter.
+2. **Classifieur léger** (250 Mo, embeddings) — 50 ms, 85-90 %.
+   À construire si le niveau 1 ne suffit pas.
+3. **Petit LLM** (qwen2.5:0.5b) — 1 s, 90-95 %.
+   Réservé aux cas ambigus.
+
+### Périmètre de démarrage
+- **Licenciement économique uniquement** (Code du travail, ~200 articles).
+- Une fois fiable (70-80 % de rappel), étendre à harcèlement, rupture
+  conventionnelle, puis d'autres codes.
+- Chaque domaine ajouté = 1 dataset + 1 entraînement + 1 adapter.
+
+### Ce que ça change pour l'utilisateur
+- À l'installation : l'avocat choisit ses domaines.
+- Beaume télécharge le modèle de base + les adaptateurs sélectionnés.
+- Chaque avocat a un Beaume personnalisé, mais tous partagent la base.
