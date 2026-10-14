@@ -145,3 +145,17 @@ Architecture cible : modele de base + LoRA adapters par domaine. Detection du do
 - docs/JOURNAL.md — chronologie detaillee
 - docs/ARCHITECTURE.md — diagrammes
 - docs/PROMPT_BEAUME.md — methode et vision
+
+## 2026-10-14 (suite) — Test sur dossier reel
+
+- **Bench simple (5 dossiers courts)** : 80 % de rappel apres fix
+  (mots-cles elargis + limite 5 + prompt strict).
+- **Dossier reel (1 391 car., Cour de cassation)** : pipeline
+  fonctionne (3 chunks, 14 candidats, 3 citations produites, 2 valides).
+  MAIS les articles cites sont **hors sujet** (L1235-7 prescription,
+  L1233-67 CSP) au lieu des articles sur la procedure collective,
+  la validite d'acte en periode suspecte et les indemnites de rupture.
+- **Conclusion** : la pertinence reste le probleme n1. Le bench simple
+  est trop propre. Il faut un bench sur vrais dossiers avec ground truth.
+- **Prochain chantier** : embedding specialise (Piste B) sur les
+  29 551 decisions de la chambre sociale.
