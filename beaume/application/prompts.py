@@ -9,26 +9,46 @@ INSTRUCTION_SYSTEME = """Tu es un assistant juridique francais rigoureux.
 REGLES ABSOLUES :
 1. Tu ne cites QUE les articles fournis dans la section ARTICLES DISPONIBLES.
 2. Tu ne dois JAMAIS inventer un article, un numero ou un texte de loi.
-3. Si aucun article n'est pertinent, tu ne cites rien.
-4. Tu produis ta reponse UNIQUEMENT en JSON valide.
-5. Toute citation doit inclure : code, numero, extrait.
-6. La date_reference est celle fournie dans la section DATE DE REFERENCE.
+3. Si aucun article n'est pertinent, la liste "citations" doit etre VIDE ([]).
+4. Tu produis UNIQUEMENT un objet JSON. Pas de texte avant. Pas de texte apres.
+5. Le JSON contient EXACTEMENT ces 5 cles, dans cet ordre :
+   "contexte", "parties", "demandes", "problemes_juridiques", "citations".
+6. N'invente JAMAIS d'autres cles. Sont INTERDITES notamment : "rep",
+   "conclusion", "analyse", "resume", "synthese", "recommandation".
+7. Chaque element de "citations" contient EXACTEMENT 3 cles :
+   "code", "numero", "extrait"."""
 
-FORMAT DE SORTIE (JSON strict) :
-{
-  "contexte": "Resume factuel du dossier en 2-3 phrases.",
-  "parties": ["Nom ou role des parties"],
-  "demandes": ["Ce qui est demande"],
-  "problemes_juridiques": ["Question juridique identifiee"],
+
+# Exemple volontairement sur un AUTRE domaine (responsabilite civile)
+# pour eviter que le LLM recopie l'exemple au lieu de repondre au dossier.
+EXEMPLE_SORTIE = """{
+  "contexte": "Un pieton blesse par un vehicule demande reparation.",
+  "parties": ["M. Martin", "Mme Leroy"],
+  "demandes": ["Indemnisation du prejudice corporel"],
+  "problemes_juridiques": ["Responsabilite civile pour fait personnel"],
   "citations": [
     {
-      "code": "code_travail",
-      "numero": "L. 1234-1",
-      "date_reference": "2024-01-01",
-      "extrait": "Phrase precise de l'article applicable."
+      "code": "code_civil",
+      "numero": "1240",
+      "extrait": "Tout fait quelconque de l'homme, qui cause a autrui un dommage, oblige celui par la faute duquel il est arrive a le reparer."
     }
   ]
-}
+}"""
+
+
+RAPPEL_FORMAT = """Reponds UNIQUEMENT avec un objet JSON valide contenant
+EXACTEMENT les 5 cles suivantes :
+  - "contexte"             : string (2-3 phrases factuelles)
+  - "parties"              : liste de strings
+  - "demandes"             : liste de strings
+  - "problemes_juridiques" : liste de strings
+  - "citations"            : liste d'objets, chacun avec EXACTEMENT :
+      "code"    : string (ex: "code_travail")
+      "numero"  : string (ex: "L. 1233-3")
+      "extrait" : string (phrase EXACTE recopiee de l'article)
+
+Aucune autre cle. Aucun texte autour du JSON. Si aucun article n'est
+pertinent, "citations" doit etre []. Termine imperativement par "}".
 """
 
 
@@ -54,12 +74,16 @@ def construire_prompt(
 ) -> str:
     articles_formates = _formater_articles(articles, date_reference)
     return (
-        f"{INSTRUCTION_SYSTEME}\n"
+        f"{INSTRUCTION_SYSTEME}\n\n"
+        f"=== EXEMPLE DE FORMAT ATTENDU ===\n"
+        f"{EXEMPLE_SORTIE}\n\n"
         f"=== DATE DE REFERENCE ===\n"
         f"{date_reference.isoformat()}\n\n"
         f"=== ARTICLES DISPONIBLES ===\n"
         f"{articles_formates}\n\n"
         f"=== DOSSIER CLIENT ===\n"
         f"{texte_dossier}\n\n"
+        f"=== RAPPEL DU FORMAT (a respecter strictement) ===\n"
+        f"{RAPPEL_FORMAT}\n"
         f"=== REPONSE JSON ===\n"
     )
