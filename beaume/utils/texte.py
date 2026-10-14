@@ -24,10 +24,30 @@ STOPWORDS_FR = frozenset({
     "tout", "tous", "toute", "toutes", "meme", "memes", "autre",
     "autres", "tel", "telle", "tels", "telles", "quel", "quelle",
     "etre", "avoir", "donc", "alors", "ainsi", "comme", "y",
+    "c", "n", "s", "t", "m", "d", "l", "qu",
+    "suis", "es", "sommes", "etes", "ai", "as", "avons", "avez", "ont", "soit",
+    "bien", "peu", "beaucoup",
+    "deux", "trois", "quatre", "cinq", "six", "sept", "huit", "neuf",
+    "dix", "cent", "mille", "premier", "premiere", "deuxieme",
+    "monsieur", "madame", "mademoiselle", "maitre", "maitresse",
+    "president", "presidente", "directeur", "directrice",
+    "bonjour", "bonsoir", "salut", "cordialement", "respectueusement",
+    "permets", "permettez", "permet", "permettre",
+    "ecrire", "ecrit", "ecris", "ecrivez",
+    "exposer", "expose", "exposez", "expliquer", "explique",
+    "situation", "souhaite", "souhaiter", "voudrais", "vouloir",
+    "besoin", "demande", "demander", "demandes",
+    "sais", "savoir", "connaitre", "connais",
+    "viens", "vient", "venir", "venu",
+    "ans", "annee", "annees", "mois", "jour", "jours",
+    "fois", "coup", "chose", "choses", "cas",
+    "concernant", "sujet", "propos", "egard",
+    "informations", "information", "renseignement", "renseignements",
+    "service", "courrier", "lettre", "message", "mail",
 })
 
 # Longueur minimale d'un mot pour etre considere comme mot-cle.
-LONGUEUR_MIN = 3
+LONGUEUR_MIN = 4
 
 
 def _retirer_accents(mot: str) -> str:
@@ -38,7 +58,7 @@ def _retirer_accents(mot: str) -> str:
     )
 
 
-def extraire_mots_cles(texte: str, limite: int = 20) -> list[str]:
+def extraire_mots_cles(texte: str, limite: int = 200) -> list[str]:
     """Extrait les mots-cles utiles d'un texte.
 
     - Retire la ponctuation.

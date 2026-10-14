@@ -26,10 +26,24 @@ def test_extraire_mots_cles_retire_stopwords():
 
 
 def test_extraire_mots_cles_retire_ponctuation():
-    mots = extraire_mots_cles("Bonjour, comment ça va ?")
-    assert "bonjour" in mots
-    assert "comment" not in mots  # stopword
-    assert "bonjour," not in mots  # ponctuation retiree
+    mots = extraire_mots_cles("Licenciement, contestation du motif economique ?")
+    assert "licenciement" in mots
+    assert "contestation" in mots
+    assert "economique" in mots
+    assert "licenciement," not in mots  # ponctuation retiree
+
+
+def test_extraire_mots_cles_retire_formules_politesse():
+    """Les formules de politesse ne polluent pas les mots-cles."""
+    mots = extraire_mots_cles(
+        "Bonjour Maitre, je me permets de vous ecrire pour exposer ma situation."
+    )
+    assert "bonjour" not in mots
+    assert "maitre" not in mots
+    assert "permets" not in mots
+    assert "ecrire" not in mots
+    assert "exposer" not in mots
+    assert "situation" not in mots
 
 
 def test_extraire_mots_cles_deduplique():
@@ -42,6 +56,14 @@ def test_extraire_mots_cles_limite():
     texte = " ".join(f"motunique{i}" for i in range(50))
     mots = extraire_mots_cles(texte, limite=5)
     assert len(mots) == 5
+
+
+def test_extraire_mots_cles_limite_defaut_generreuse():
+    """La limite par defaut doit etre >= 100 pour ne pas tronquer
+    l'information pertinente d'un dossier client."""
+    texte = " ".join(f"motunique{i}" for i in range(150))
+    mots = extraire_mots_cles(texte)  # pas de limite explicite
+    assert len(mots) > 100
 
 
 def test_extraire_mots_cles_vide():
@@ -58,7 +80,7 @@ def test_extraire_mots_cles_longueur_min():
     mots = extraire_mots_cles("a ab abc abcd")
     assert "a" not in mots
     assert "ab" not in mots
-    assert "abc" in mots
+    assert "abc" not in mots   # longueur min = 4
     assert "abcd" in mots
 
 
