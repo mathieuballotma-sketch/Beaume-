@@ -1,16 +1,17 @@
-"""Reecrit des faits juridiques en style client via l'API Groq.
+"""Reecrit des faits juridiques en style client.
 
-Le dataset paires.jsonl contient des faits rediges par des juges
-(langage juridique). Un vrai dossier client est en langage courant.
-Ce script reecrit chaque fait en style client.
+Fournisseurs supportes :
+- groq   : API Groq (rapide, quota journalier limite)
+- ollama : Ollama local (lent, aucun quota, donnees locales)
 
 Usage :
-    PYTHONPATH=. python scripts/reecrire_faits.py --n 100
-    PYTHONPATH=. python scripts/reecrire_faits.py --n 1000
-    PYTHONPATH=. python scripts/reecrire_faits.py --n 1000 --graine 42
+    PYTHONPATH=. python scripts/reecrire_faits.py --n 1000 --graine 43 \\
+        --sortie data/training/faits_clients_2.jsonl \\
+        --modele openai/gpt-oss-20b --fournisseur groq
 
-Reprise : si le script est interrompu, relance-le. Il reprend ou il
-s'est arrete (les deja-traitees sont skippees).
+    PYTHONPATH=. python scripts/reecrire_faits.py --n 1000 --graine 44 \\
+        --sortie data/training/faits_clients_3.jsonl \\
+        --modele qwen2.5:7b-instruct --fournisseur ollama
 """
 from __future__ import annotations
 
@@ -21,58 +22,97 @@ import random
 import time
 from pathlib import Path
 
-from groq import Groq
-
 from beaume.config import paths
 from beaume.utils.logging import get_logger
 
 log = get_logger("reecrire_faits")
 
-MODELE = "openai/gpt-oss-120b"
+MODELE_GROQ = "openai/gpt-oss-20b"
+MODELE_OLLAMA = "qwen2.5:7b-instruct"
 CHEMIN_PAIRES = paths.DATA / "training" / "paires.jsonl"
 CHEMIN_SORTIE = paths.DATA / "training" / "faits_clients.jsonl"
+OLLAMA_URL = "http://localhost:11434/v1"
 
-PROMPT_SYSTEME = """Tu es un assistant qui reformule des faits
-juridiques en langage client.
+PROMPT_SYSTEME = """Tu transformes un extrait de jugement en lettre
+qu'un client ecrit a son avocat.
 
-Regles ABSOLUES :
-1. Tu recois un texte de decision de justice (faits bruts).
-2. Tu le reecris comme si le client ecrivait LUI-MEME a son avocat.
-3. Premiere personne obligatoire ("je", "mon employeur", "j'ai ete").
-4. Garde TOUS les elements factuels : dates, lieux, noms de societes,
-   montants, durees, fonctions.
-5. N'invente RIEN. Si une info manque, tant pis.
-6. INTERDICTION ABSOLUE de citer un article de loi. Si le texte
-   original cite "l'article L1233-3" ou "l'article 8 du contrat",
-   NE LE RECOPIE PAS. Un client normal ne connait pas ces references.
-7. N'utilise PAS de vocabulaire juridique (pas de "attendu que",
-   "aux termes de", "en l'espece", "le requerant", "la cour",
-   "le jugement", "les dispositions").
-8. Longueur : 200-400 mots maximum. Sois concis.
-9. Style : simple, direct, parfois confus. Le client n'est pas un
-   redacteur professionnel. Il peut repeter, hesiter, digresser un peu.
-10. Termine par une question ou une demande claire a l'avocat.
+Tu n'es PAS un juriste. Tu es un justiciable. Tu ne connais AUCUN
+article de loi. Tu ne connais AUCUN terme juridique. Tu racontes
+ton histoire comme tu la raconterais a un ami.
 
-Exemple de transformation :
+REGLES ABSOLUES, dans cet ordre de priorite :
 
-ORIGINAL :
-"Attendu que Mme X a ete engagee le 1er mars 2000 par la societe Y
-en qualite de secretaire ; qu'elle a ete licenciee le 15 juin 2023
-pour motif economique ; que l'employeur invoquait des difficultes
-economiques liees a une baisse du chiffre d'affaires."
+1. LONGUEUR : 150 a 300 mots MAXIMUM. C'est la regle la plus
+   importante. Si tu depasses, tu as echoue. Compte mentalement.
 
-REECRITURE :
-"Bonjour Maitre, j'ai travaille comme secretaire dans la societe Y
-depuis mars 2000. Le 15 juin 2023, mon patron m'a licenciee en disant
-que l'entreprise avait des difficultes et que le chiffre d'affaires
-avait baisse. Mais moi je trouve ca bizarre parce que..."
+2. LANGAGE CLIENT. Interdit absolument d'utiliser ces mots ou leurs
+   variantes : requalification, requalifie, resilie, resiliation,
+   sans cause reelle et serieuse, prud'hommes (sauf "j'ai ete aux
+   prud'hommes" en langage courant), juridiction, instance, demande
+   reconventionnelle, appelant, intimé, arret, jugement, decision,
+   condamne, condamnation, dispositions, obligation de securite,
+   faute grave, licenciement economique, rupture conventionnelle,
+   solliciter, requerir, aux termes de, en l'espece, attendu que,
+   par ailleurs, en consequence, en tout etat de cause, en outre.
 
-Reponds UNIQUEMENT avec le texte reecrit. Pas de commentaire.
-Pas de guillemets. Pas de titre."""
+3. PAS DE MONTANTS PRECIS. Un client ne connait pas 365,40 €.
+   Arrondis (300 €, 5 000 €, 15 000 €) ou dis "un peu", "beaucoup",
+   "plusieurs milliers d'euros". Si tu ne sais pas arrondir, omets.
+
+4. PAS DE STRUCTURE. Pas de liste a puces. Pas de tirets. Pas de
+   numeros. Pas de sous-titres. Le client ecrit un bloc continu,
+   comme un mail.
+
+5. PAS DE NARRATION JUDICIAIRE. Ne raconte PAS le deroulement de la
+   procedure etape par etape. Le client ne dit pas "le 16 juin 2022
+   le conseil a rendu un jugement qui...". Il dit "j'ai ete aux
+   prud'hommes, ils m'ont donne un peu d'argent mais pas assez".
+
+6. GARDE les faits essentiels : metier, employeur (nom), dates
+   importantes (embauche, licenciement), ce qui s'est passe, ce que
+   le client veut. C'est tout. 90 % du reste est du detail juridique
+   qui doit disparaitre.
+
+7. Premiere personne. "je", "mon", "j'ai". Le client parle.
+
+8. Termine par une question simple a l'avocat.
+
+EXEMPLE DE CE QU'IL FAUT FAIRE :
+
+Original (extrait long) :
+"M. [J] a ete embauche le 12 octobre 2018 par la SAS AC transport
+en qualite de chauffeur routier zone courte. Par avenant du 1er
+janvier 2020, il s'est vu attribuer la qualite de conducteur zone
+longue et la duree hebdomadaire a ete portee de 35 heures a 200
+heures par mois. Le 22 fevrier 2021, M. [J] a ete convoque a un
+entretien prealable a un eventuel licenciement avec mise a pied
+conservatoire. Par lettre du 12 avril 2021, il a pris acte de la
+rupture. Par jugement du 16 juin 2022, le conseil de prud'hommes de
+Montelimar a requalifie la prise d'acte en licenciement sans cause
+reelle et serieuse et condamne la SAS AC transport a verser
+3 500 € d'heures supplementaires, 350 € de conges payes, 15 600 €
+de dommages pour travail dissimule, 5 200 € de preavis, 7 800 €
+pour licenciement sans cause, 5 000 € pour harcelement."
+
+Reecriture attendue :
+"Bonjour Maitre, je travaillais comme chauffeur routier dans la
+societe AC transport depuis 2018. Au debut je faisais des courtes
+distances, puis en 2020 mon patron m'a fait passer sur des longs
+trajets et m'a fait bosser beaucoup plus, presque 200 heures par
+mois. J'ai eu un arret maladie, et quand je suis revenu ils m'ont
+convoque a un entretien et m'ont mis a pied. Du coup j'ai decide
+d'arreter et j'ai ete aux prud'hommes. Ils m'ont donne un peu
+d'argent pour les heures supp et un peu pour le harcelement, mais
+je trouve que c'est pas assez par rapport a tout ce que j'ai subi.
+Est-ce que je peux faire appel ?"
+
+REGLE FINALE : la reecriture ci-dessus fait 130 mots. C'est le bon
+format. Si ta sortie fait plus de 350 mots, recommence.
+
+Reponds UNIQUEMENT avec le texte reecrit."""
 
 
-def _charger_env() -> str:
-    """Charge GROQ_API_KEY depuis .env."""
+def _charger_env() -> dict[str, str]:
     env_path = paths.ROOT / ".env"
     if not env_path.exists():
         raise SystemExit(f".env introuvable : {env_path}")
@@ -80,14 +120,23 @@ def _charger_env() -> str:
         if "=" in ligne and not ligne.startswith("#"):
             k, v = ligne.split("=", 1)
             os.environ[k.strip()] = v.strip()
-    cle = os.environ.get("GROQ_API_KEY", "")
-    if not cle:
-        raise SystemExit("GROQ_API_KEY absente du .env")
-    return cle
+    return dict(os.environ)
+
+
+def _creer_client(fournisseur: str, env: dict[str, str]):
+    if fournisseur == "groq":
+        from groq import Groq
+        cle = env.get("GROQ_API_KEY", "")
+        if not cle:
+            raise SystemExit("GROQ_API_KEY absente du .env")
+        return Groq(api_key=cle)
+    if fournisseur == "ollama":
+        from openai import OpenAI
+        return OpenAI(base_url=OLLAMA_URL, api_key="ollama", timeout=600.0)
+    raise SystemExit(f"Fournisseur inconnu : {fournisseur}")
 
 
 def _charger_paires(limite: int | None, graine: int) -> list[dict]:
-    """Charge paires.jsonl avec echantillonnage stratifie."""
     from collections import defaultdict
 
     toutes = []
@@ -120,12 +169,11 @@ def _charger_paires(limite: int | None, graine: int) -> list[dict]:
     return echantillon[:limite]
 
 
-def _charger_deja_traitees() -> set[str]:
-    """Retourne les IDs deja traites (pour reprise)."""
-    if not CHEMIN_SORTIE.exists():
+def _charger_deja_traitees(chemin: Path) -> set[str]:
+    if not chemin.exists():
         return set()
     ids = set()
-    with CHEMIN_SORTIE.open(encoding="utf-8") as f:
+    with chemin.open(encoding="utf-8") as f:
         for ligne in f:
             try:
                 d = json.loads(ligne)
@@ -135,18 +183,22 @@ def _charger_deja_traitees() -> set[str]:
     return ids
 
 
-def _reecrire(client: Groq, faits: str, retries: int = 3) -> str | None:
-    """Appelle Groq pour reecrire les faits. Retourne None si echec."""
+def _reecrire(client, faits: str, modele: str,
+              fournisseur: str, retries: int = 3) -> str | None:
+    kwargs = {}
+    if fournisseur == "groq" and "gpt-oss" in modele:
+        kwargs["reasoning_effort"] = "low"
     for tentative in range(retries):
         try:
             reponse = client.chat.completions.create(
-                model=MODELE,
+                model=modele,
                 messages=[
                     {"role": "system", "content": PROMPT_SYSTEME},
                     {"role": "user", "content": faits[:4000]},
                 ],
                 max_tokens=2000,
                 temperature=0.7,
+                **kwargs,
             )
             texte = reponse.choices[0].message.content or ""
             texte = texte.strip()
@@ -162,38 +214,51 @@ def _reecrire(client: Groq, faits: str, retries: int = 3) -> str | None:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--n", type=int, default=100,
-                        help="Nombre de paires a traiter.")
+    parser.add_argument("--n", type=int, default=100)
     parser.add_argument("--graine", type=int, default=42)
+    parser.add_argument("--sortie", type=Path, default=CHEMIN_SORTIE)
+    parser.add_argument("--fournisseur", type=str, default="groq",
+                        choices=["groq", "ollama"])
+    parser.add_argument("--modele", type=str, default=None)
     args = parser.parse_args()
 
-    cle = _charger_env()
-    client = Groq(api_key=cle)
+    if args.modele is None:
+        args.modele = (MODELE_GROQ if args.fournisseur == "groq"
+                       else MODELE_OLLAMA)
+
+    env = _charger_env()
+    client = _creer_client(args.fournisseur, env)
 
     if not CHEMIN_PAIRES.exists():
         raise SystemExit(f"Introuvable : {CHEMIN_PAIRES}")
 
     paires = _charger_paires(args.n, args.graine)
-    deja_traitees = _charger_deja_traitees()
+    deja_traitees = _charger_deja_traitees(args.sortie)
 
     print(f"Deja traitees : {len(deja_traitees)}")
     print(f"A traiter     : {len(paires)}")
+    print(f"Fournisseur   : {args.fournisseur}")
+    print(f"Modele        : {args.modele}")
+    print(f"Sortie        : {args.sortie}")
     print()
 
-    CHEMIN_SORTIE.parent.mkdir(parents=True, exist_ok=True)
+    args.sortie.parent.mkdir(parents=True, exist_ok=True)
 
     t0 = time.monotonic()
     n_ok = 0
     n_echec = 0
     n_skip = 0
 
-    with CHEMIN_SORTIE.open("a", encoding="utf-8") as f_out:
+    with args.sortie.open("a", encoding="utf-8") as f_out:
         for i, paire in enumerate(paires, 1):
             if paire["id"] in deja_traitees:
                 n_skip += 1
                 continue
 
-            texte_client = _reecrire(client, paire["faits"])
+            texte_client = _reecrire(
+                client, paire["faits"], args.modele,
+                args.fournisseur,
+            )
             if texte_client is None:
                 n_echec += 1
                 continue
@@ -214,7 +279,7 @@ def main() -> int:
                 vitesse = n_ok / duree * 60 if duree > 0 else 0
                 print(f"  {i}/{len(paires)} — "
                       f"{n_ok} ok, {n_echec} echec, "
-                      f"{vitesse:.1f}/min")
+                      f"{vitesse:.1f}/min", flush=True)
 
     duree = time.monotonic() - t0
     print()
@@ -223,7 +288,9 @@ def main() -> int:
     print(f"Echecs     : {n_echec}")
     print(f"Skippees   : {n_skip}")
     print(f"Duree      : {duree:.0f} s")
-    print(f"Sortie     : {CHEMIN_SORTIE}")
+    print(f"Fournisseur: {args.fournisseur}")
+    print(f"Modele     : {args.modele}")
+    print(f"Sortie     : {args.sortie}")
     return 0
 
 
