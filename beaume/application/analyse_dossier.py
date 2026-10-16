@@ -1,4 +1,6 @@
 """Orchestrateur : analyse complete d'un dossier client."""
+from __future__ import annotations
+
 import json
 import re
 from datetime import date
@@ -58,7 +60,9 @@ def _parse_analyse(brut: dict, date_reference: date) -> Analyse:
                 )
             )
         except (KeyError, ValueError) as e:
-            log.warning("Citation ignoree : %s (%s)", c, e)
+            # Ne pas loguer le contenu de `c` : il vient du LLM, donc
+            # indirectement du dossier client. Le type d'erreur suffit.
+            log.warning("Citation ignoree : %s", type(e).__name__)
 
     return Analyse(
         contexte=str(brut.get("contexte", "")),
@@ -95,13 +99,17 @@ class AnalyseDossier:
         self.selecteur = selecteur or SelecteurChunks()
         self.limite_articles = limite_articles
 
-    def _enrichir_articles(self, resultats) -> list:
-        """Recupere les Article complets depuis le depot."""
-        vus = {}
+    def _enrichir_articles(self, resultats, date_reference: date) -> list:
+        """Recupere les Article complets depuis le depot a la date de reference.
+
+        Dedoublonne par article_id. La date determine la version de
+        l'article : c'est celle du dossier, pas une date arbitraire.
+        """
+        vus: dict[str, object] = {}
         for r in resultats:
             if r.article_id in vus:
                 continue
-            article = self.depot.trouver_par_id(r.article_id, date(2000, 1, 1))
+            article = self.depot.trouver_par_id(r.article_id, date_reference)
             if article is not None:
                 vus[r.article_id] = article
         return list(vus.values())
@@ -116,31 +124,43 @@ class AnalyseDossier:
 
         all_chunks = []
         chunks_texte = []
+        nb_fichiers_ignores = 0
         for fichier in resultat.fichiers:
             if not fichier.ok:
+                nb_fichiers_ignores += 1
+                log.warning(
+                    "Fichier ignore (%s) : %s",
+                    fichier.chemin.name,
+                    fichier.erreur,
+                )
                 continue
             for chunk in fichier.chunks:
                 all_chunks.append(chunk)
                 chunks_texte.append(chunk.texte)
 
+        if nb_fichiers_ignores:
+            log.warning(
+                "Analyse partielle : %d fichier(s) non lu(s) sur %d",
+                nb_fichiers_ignores,
+                len(resultat.fichiers),
+            )
+
         if not chunks_texte:
-            log.info("Aucun chunk exploitable dans %s", dossier)
+            log.warning("Aucun chunk exploitable dans %s", dossier)
             return Analyse(date_reference=date_reference)
 
         selection = self.selecteur.selectionner(all_chunks)
         texte_dossier = self.selecteur.formater_pour_prompt(selection)
 
-        # On interroge le chercheur pour chaque chunk. Pour l'instant
-        # on n'exploite pas encore les resultats dans le prompt
-        # (enrichissement avec Article complet prevu en phase 8),
-        # mais on appelle bien la methode.
         resultats_recherche = []
         for chunk in chunks_texte:
             resultats_recherche.extend(
                 self.chercheur.chercher(chunk, limite=self.limite_articles)
             )
 
-        articles_candidats = self._enrichir_articles(resultats_recherche)
+        articles_candidats = self._enrichir_articles(
+            resultats_recherche, date_reference,
+        )
         log.info(
             "Analyse %s : %d chunks, %d articles candidats (%d hits chercheur)",
             dossier, len(chunks_texte), len(articles_candidats),
@@ -162,7 +182,7 @@ class AnalyseDossier:
         try:
             brut = _extraire_json(reponse.texte)
         except ErreurAnalyse as e:
-            log.error("Reponse LLM illisible : %s", e)
+            log.error("Reponse LLM illisible : %s", type(e).__name__)
             return Analyse(date_reference=date_reference)
 
         return _parse_analyse(brut, date_reference)
