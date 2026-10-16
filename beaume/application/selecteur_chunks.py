@@ -12,16 +12,14 @@ du chunk (pour ne pas favoriser les chunks longs).
 
 Fonction pure : aucune I/O, aucun appel reseau.
 """
+from __future__ import annotations
+
 import re
 import unicodedata
 from dataclasses import dataclass
 
 from beaume.application.chunker import Chunk
 
-
-# ---------------------------------------------------------------------------
-# Signatures par question : {mot-cle: poids}
-# ---------------------------------------------------------------------------
 
 SIGNATURES: dict[str, dict[str, int]] = {
     "faits": {
@@ -51,7 +49,6 @@ SIGNATURES: dict[str, dict[str, int]] = {
 }
 
 
-# Mots trop courts ou vides
 _LONGUEUR_MIN = 3
 
 
@@ -88,13 +85,8 @@ def _score_question(texte_norm: str, signature: dict[str, int]) -> float:
             occurrences = texte_norm.count(mot)
             score += occurrences * poids
 
-    # Normalisation : on divise par la racine carree du nombre de mots
     return score / (nb_mots ** 0.5)
 
-
-# ---------------------------------------------------------------------------
-# Selecteur
-# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class ChunkSelectionne:
@@ -136,11 +128,8 @@ class SelecteurChunks:
                 chunks_utilises=0,
             )
 
-        # Pre-calcul des textes normalises
         textes_norm = {c.index: _normaliser(c.texte) for c in chunks}
 
-        # Pour chaque chunk, calculer son score sur chaque question
-        # et l'assigner a la question ou il score le mieux.
         par_question: dict[str, list[ChunkSelectionne]] = {
             q: [] for q in SIGNATURES
         }
@@ -150,7 +139,6 @@ class SelecteurChunks:
                 q: _score_question(textes_norm[chunk.index], sig)
                 for q, sig in SIGNATURES.items()
             }
-            # Question dominante
             question_dom = max(scores, key=scores.get)
             score_dom = scores[question_dom]
             if score_dom > self.score_min:
@@ -162,7 +150,6 @@ class SelecteurChunks:
                     )
                 )
 
-        # Trier chaque question par score decroissant, garder top N
         for q in par_question:
             par_question[q].sort(key=lambda x: -x.score)
             par_question[q] = par_question[q][: self.top]
@@ -176,7 +163,11 @@ class SelecteurChunks:
         )
 
     def formater_pour_prompt(self, selection: SelectionChunks) -> str:
-        """Construit un texte structure pour le LLM."""
+        """Construit un texte structure pour le LLM.
+
+        Chaque chunk est precede d'un en-tete `[fichier, page X]` pour
+        que le LLM puisse citer la source dans sa reponse.
+        """
         blocs = []
         for question in SIGNATURES:
             chunks = selection.par_question.get(question, [])
@@ -185,6 +176,16 @@ class SelecteurChunks:
             titre = question.upper().replace("_", " ")
             blocs.append(f"=== {titre} ===")
             for sel in chunks:
-                blocs.append(sel.chunk.texte)
+                c = sel.chunk
+                if c.fichier:
+                    if c.page_debut == c.page_fin:
+                        entete = f"[{c.fichier}, page {c.page_debut}]"
+                    else:
+                        entete = (
+                            f"[{c.fichier}, pages "
+                            f"{c.page_debut}-{c.page_fin}]"
+                        )
+                    blocs.append(entete)
+                blocs.append(c.texte)
                 blocs.append("")
         return "\n".join(blocs)

@@ -15,12 +15,19 @@ REGLES ABSOLUES :
    "contexte", "parties", "demandes", "problemes_juridiques", "citations".
 6. N'invente JAMAIS d'autres cles. Sont INTERDITES notamment : "rep",
    "conclusion", "analyse", "resume", "synthese", "recommandation".
-7. Chaque element de "citations" contient EXACTEMENT 3 cles :
-   "code", "numero", "extrait"."""
+7. Chaque element de "citations" contient EXACTEMENT 5 cles :
+   "code", "numero", "extrait", "pages", "fichier".
+8. Dans "pages", tu indiques les numeros de page ou tu as trouve
+   l'information dans le dossier. Le dossier contient des en-tetes
+   du type `[conclusions.pdf, page 12]` ou `[expertise.pdf, pages 3-4]`.
+   Utilise ces en-tetes pour remplir "pages" et "fichier".
+9. Dans "fichier", tu indiques le nom du fichier source (ex:
+   "conclusions.pdf"). Si l'information vient de plusieurs pages,
+   tu listes toutes les pages dans "pages".
+10. Si tu ne sais pas d'ou vient l'information, mets "pages" a [] et
+    "fichier" a ""."""
 
 
-# Exemple volontairement sur un AUTRE domaine (responsabilite civile)
-# pour eviter que le LLM recopie l'exemple au lieu de repondre au dossier.
 EXEMPLE_SORTIE = """{
   "contexte": "Un pieton blesse par un vehicule demande reparation.",
   "parties": ["M. Martin", "Mme Leroy"],
@@ -30,7 +37,9 @@ EXEMPLE_SORTIE = """{
     {
       "code": "code_civil",
       "numero": "1240",
-      "extrait": "Tout fait quelconque de l'homme, qui cause a autrui un dommage, oblige celui par la faute duquel il est arrive a le reparer."
+      "extrait": "Tout fait quelconque de l'homme, qui cause a autrui un dommage, oblige celui par la faute duquel il est arrive a le reparer.",
+      "pages": [3, 4],
+      "fichier": "conclusions.pdf"
     }
   ]
 }"""
@@ -46,6 +55,8 @@ EXACTEMENT les 5 cles suivantes :
       "code"    : string (ex: "code_travail")
       "numero"  : string (ex: "L. 1233-3")
       "extrait" : string (phrase EXACTE recopiee de l'article)
+      "pages"   : liste d'entiers (numeros de page du dossier)
+      "fichier" : string (nom du fichier source, ex: "conclusions.pdf")
 
 Aucune autre cle. Aucun texte autour du JSON. Si aucun article n'est
 pertinent, "citations" doit etre []. Termine imperativement par "}".

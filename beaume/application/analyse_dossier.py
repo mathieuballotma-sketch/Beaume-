@@ -1,4 +1,3 @@
-
 """Orchestrateur : analyse complete d'un dossier client."""
 from __future__ import annotations
 
@@ -52,17 +51,22 @@ def _parse_analyse(brut: dict, date_reference: date) -> Analyse:
     citations = []
     for c in citations_brutes:
         try:
+            pages_brutes = c.get("pages", [])
+            pages = tuple(
+                int(p) for p in pages_brutes
+                if isinstance(p, (int, float, str)) and str(p).isdigit()
+            )
             citations.append(
                 Citation(
                     code=CodeJuridique(c["code"]),
                     numero=str(c["numero"]),
                     date_reference=date_reference,
                     extrait=c.get("extrait"),
+                    pages=pages,
+                    fichier=str(c.get("fichier", "")),
                 )
             )
         except (KeyError, ValueError) as e:
-            # Ne pas loguer le contenu de `c` : il vient du LLM, donc
-            # indirectement du dossier client. Le type d'erreur suffit.
             log.warning("Citation ignoree : %s", type(e).__name__)
 
     return Analyse(
@@ -101,11 +105,7 @@ class AnalyseDossier:
         self.limite_articles = limite_articles
 
     def _enrichir_articles(self, resultats, date_reference: date) -> list:
-        """Recupere les Article complets depuis le depot a la date de reference.
-
-        Dedoublonne par article_id. La date determine la version de
-        l'article : c'est celle du dossier, pas une date arbitraire.
-        """
+        """Recupere les Article complets depuis le depot a la date de reference."""
         vus: dict[str, object] = {}
         for r in resultats:
             if r.article_id in vus:
