@@ -1,8 +1,11 @@
+
 """Parcours d'un dossier client et extraction de tous ses fichiers.
 
 Cet objet ne connait AUCUN format concret : il demande au registre.
 C'est l'application de la loi d'inversion des dependances.
 """
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -10,6 +13,7 @@ from pathlib import Path
 from beaume.application.chunker import Chunk, decouper
 from beaume.application.etats import EtatDocument
 from beaume.application.machine import Document, TransitionIllegale
+from beaume.ports.extracteur import PageExtraite
 from beaume.ports.registre import RegistreExtracteurs
 from beaume.utils.logging import get_logger
 
@@ -21,6 +25,7 @@ class FichierExtrait:
     chemin: Path
     texte: str
     chunks: tuple[Chunk, ...] = ()
+    pages: tuple[PageExtraite, ...] = ()
     erreur: str | None = None
 
     @property
@@ -92,7 +97,8 @@ class LecteurDossier:
             doc = Document(chemin=fichier)
             try:
                 doc.transition(EtatDocument.EXTRAIT, "extraction en cours")
-                texte = extracteur.extraire(fichier)
+                pages = tuple(extracteur.extraire_avec_pages(fichier))
+                texte = "\n\n".join(p.texte for p in pages)
                 chunks = tuple(
                     decouper(texte, self.taille_chunk, self.chevauchement)
                 )
@@ -101,11 +107,12 @@ class LecteurDossier:
                         chemin=fichier,
                         texte=texte,
                         chunks=chunks,
+                        pages=pages,
                     )
                 )
                 log.info(
-                    "Extrait : %s (%d caracteres, %d chunks)",
-                    fichier.name, len(texte), len(chunks),
+                    "Extrait : %s (%d pages, %d caracteres, %d chunks)",
+                    fichier.name, len(pages), len(texte), len(chunks),
                 )
             except Exception as exc:  # noqa: BLE001
                 log.error("Echec sur %s : %s", fichier.name, exc)
