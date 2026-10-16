@@ -19,7 +19,10 @@ from pathlib import Path
 from beaume.adapters.chercheur_articles_fts5 import ChercheurArticlesFTS5
 from beaume.adapters.depot_sqlite import DepotSQLite
 from beaume.adapters.extracteur_pdf import ExtracteurPDF
-from beaume.adapters.generateur_ollama import GenerateurOllama
+from beaume.adapters.generateur_ollama import (
+    SCHEMA_ANALYSE,
+    GenerateurOllama,
+)
 from beaume.adapters.source_fichier_local import SourceFichierLocal
 from beaume.adapters.verificateur_standard import VerificateurStandard
 from beaume.application.pipeline import PipelineAnalyse
@@ -100,7 +103,7 @@ def main(dossier: str, date_str: str | None) -> int:
     depot = _construire_depot()
     registre = _construire_registre()
     chercheur = ChercheurArticlesFTS5(depot)
-    generateur = GenerateurOllama()
+    generateur = GenerateurOllama(schema=SCHEMA_ANALYSE)
     verificateur = VerificateurStandard(depot)
 
     pipeline = PipelineAnalyse(
