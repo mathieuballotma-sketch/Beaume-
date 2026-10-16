@@ -1,4 +1,3 @@
-
 """Parcours d'un dossier client et extraction de tous ses fichiers.
 
 Cet objet ne connait AUCUN format concret : il demande au registre.
@@ -10,7 +9,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
-from beaume.application.chunker import Chunk, decouper
+from beaume.application.chunker import Chunk, decouper_pages
 from beaume.application.etats import EtatDocument
 from beaume.application.machine import Document, TransitionIllegale
 from beaume.ports.extracteur import PageExtraite
@@ -100,7 +99,12 @@ class LecteurDossier:
                 pages = tuple(extracteur.extraire_avec_pages(fichier))
                 texte = "\n\n".join(p.texte for p in pages)
                 chunks = tuple(
-                    decouper(texte, self.taille_chunk, self.chevauchement)
+                    decouper_pages(
+                        list(pages),
+                        fichier.name,
+                        self.taille_chunk,
+                        self.chevauchement,
+                    )
                 )
                 resultat.fichiers.append(
                     FichierExtrait(

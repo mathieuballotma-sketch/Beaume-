@@ -3,7 +3,11 @@
 Fonction pure : aucune I/O, aucun effet de bord.
 Loi 6 : purete au coeur, effets aux bords.
 """
+from __future__ import annotations
+
 from dataclasses import dataclass
+
+from beaume.ports.extracteur import PageExtraite
 
 
 @dataclass(frozen=True)
@@ -12,6 +16,9 @@ class Chunk:
     texte: str
     debut_car: int
     fin_car: int
+    fichier: str = ""
+    page_debut: int = 0
+    page_fin: int = 0
 
     @property
     def longueur(self) -> int:
@@ -36,23 +43,17 @@ def _decouper_paragraphes(texte: str) -> list[tuple[int, int]]:
     return [(d, f) for d, f in bornes if texte[d:f].strip()]
 
 
-def decouper(
+def _offsets_des_chunks(
     texte: str,
-    taille_cible: int = 600,
-    chevauchement: int = 80,
-) -> list[Chunk]:
-    if not texte or not texte.strip():
-        return []
-    if taille_cible <= 0:
-        raise ValueError("taille_cible doit etre > 0")
-    if chevauchement < 0 or chevauchement >= taille_cible:
-        raise ValueError("chevauchement doit etre dans [0, taille_cible[")
-
+    taille_cible: int,
+    chevauchement: int,
+) -> list[tuple[int, int]]:
+    """Retourne la liste des (debut, fin) de chaque chunk dans le texte."""
     paragraphes = _decouper_paragraphes(texte)
     if not paragraphes:
         return []
 
-    chunks: list[Chunk] = []
+    offsets: list[tuple[int, int]] = []
     tampon_debut: int | None = None
     tampon_fin: int = 0
 
@@ -60,13 +61,7 @@ def decouper(
         nonlocal tampon_debut, tampon_fin
         if tampon_debut is None:
             return
-        morceau = texte[tampon_debut:tampon_fin]
-        chunks.append(Chunk(
-            index=len(chunks),
-            texte=morceau,
-            debut_car=tampon_debut,
-            fin_car=tampon_fin,
-        ))
+        offsets.append((tampon_debut, tampon_fin))
         tampon_debut = None
         tampon_fin = 0
 
@@ -76,12 +71,7 @@ def decouper(
             _flush()
             pos = debut
             while pos < fin:
-                chunks.append(Chunk(
-                    index=len(chunks),
-                    texte=texte[pos:min(pos + taille_cible, fin)],
-                    debut_car=pos,
-                    fin_car=min(pos + taille_cible, fin),
-                ))
+                offsets.append((pos, min(pos + taille_cible, fin)))
                 pos += taille_cible - chevauchement
             continue
 
@@ -100,4 +90,99 @@ def decouper(
             tampon_fin = fin
 
     _flush()
+    return offsets
+
+
+def _pages_du_chunk(
+    pages: list[PageExtraite],
+    debut: int,
+    fin: int,
+) -> tuple[int, int]:
+    """Retourne (page_debut, page_fin) pour un chunk [debut, fin[.
+
+    Un chunk peut chevaucher plusieurs pages si le decoupage le coupe.
+    """
+    if not pages:
+        return (0, 0)
+    page_debut: int | None = None
+    page_fin: int | None = None
+    for p in pages:
+        if p.fin_car > debut and page_debut is None:
+            page_debut = p.numero
+        if p.debut_car < fin:
+            page_fin = p.numero
+    if page_debut is None:
+        page_debut = pages[0].numero
+    if page_fin is None:
+        page_fin = page_debut
+    return (page_debut, page_fin)
+
+
+def _valider_params(taille_cible: int, chevauchement: int) -> None:
+    if taille_cible <= 0:
+        raise ValueError("taille_cible doit etre > 0")
+    if chevauchement < 0 or chevauchement >= taille_cible:
+        raise ValueError("chevauchement doit etre dans [0, taille_cible[")
+
+
+def decouper(
+    texte: str,
+    taille_cible: int = 600,
+    chevauchement: int = 80,
+) -> list[Chunk]:
+    """Decoupe un texte brut en chunks (interface historique).
+
+    Les chunks n'ont pas d'information de page. Utiliser
+    `decouper_pages` pour conserver les pages.
+    """
+    if not texte or not texte.strip():
+        return []
+    _valider_params(taille_cible, chevauchement)
+
+    offsets = _offsets_des_chunks(texte, taille_cible, chevauchement)
+    return [
+        Chunk(
+            index=i,
+            texte=texte[d:f],
+            debut_car=d,
+            fin_car=f,
+        )
+        for i, (d, f) in enumerate(offsets)
+    ]
+
+
+def decouper_pages(
+    pages: list[PageExtraite],
+    fichier: str,
+    taille_cible: int = 600,
+    chevauchement: int = 80,
+) -> list[Chunk]:
+    """Decoupe un document pagine en chunks annotes.
+
+    Chaque chunk porte :
+      - `fichier`     : nom du fichier source
+      - `page_debut`  : numero de la premiere page couverte
+      - `page_fin`    : numero de la derniere page couverte
+    """
+    if not pages:
+        return []
+    texte = "\n\n".join(p.texte for p in pages)
+    if not texte.strip():
+        return []
+    _valider_params(taille_cible, chevauchement)
+
+    offsets = _offsets_des_chunks(texte, taille_cible, chevauchement)
+    chunks: list[Chunk] = []
+    for i, (d, f) in enumerate(offsets):
+        page_debut, page_fin = _pages_du_chunk(pages, d, f)
+        chunks.append(Chunk(
+            index=i,
+            texte=texte[d:f],
+            debut_car=d,
+            fin_car=f,
+            fichier=fichier,
+            page_debut=page_debut,
+            page_fin=page_fin,
+        ))
+    return chunks
     return chunks
