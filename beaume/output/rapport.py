@@ -61,8 +61,7 @@ def _formater_verification(v: ResultatVerification) -> str:
 
 def _formater_rejet(v: ResultatVerification) -> str:
     """Formate une citation rejetee avec, si disponibles, l'extrait
-    propose par le LLM et le texte officiel — pour permettre a l'avocat
-    de comprendre pourquoi la citation a ete rejetee."""
+    propose par le LLM et le texte officiel."""
     c = v.citation
     lignes = [
         f"### {c.code.value} - Article {c.numero} (au {c.date_reference.isoformat()})",
@@ -80,6 +79,27 @@ def _formater_rejet(v: ResultatVerification) -> str:
     return "\n".join(lignes)
 
 
+def _ligne_etat(analyse: Analyse) -> list[str]:
+    """Genere la ligne d'etat du rapport (COMPLET / PARTIEL / ECHEC)."""
+    etat = analyse.etat
+    if etat == "COMPLET":
+        return ["- **Etat** : COMPLET", ""]
+    if etat == "PARTIEL":
+        lignes = [
+            "- **Etat** : PARTIEL",
+            f"- **Fichiers ignores** : {len(analyse.fichiers_ignores)}",
+        ]
+        for nom in analyse.fichiers_ignores:
+            lignes.append(f"  - `{nom}`")
+        lignes.append("")
+        return lignes
+    lignes = ["- **Etat** : ECHEC"]
+    if analyse.erreur:
+        lignes.append(f"- **Raison** : {analyse.erreur}")
+    lignes.append("")
+    return lignes
+
+
 def rendre_markdown(rapport: Rapport) -> str:
     a = rapport.analyse
     lignes = [
@@ -91,7 +111,9 @@ def rendre_markdown(rapport: Rapport) -> str:
         f"- **Duree d'analyse** : {rapport.duree_s:.2f} s",
         f"- **Citations valides** : {len(rapport.citations_valides)}",
         f"- **Citations rejetees** : {len(rapport.citations_rejetees)}",
-        "",
+    ]
+    lignes += _ligne_etat(a)
+    lignes += [
         "---",
         "",
         "## Contexte",

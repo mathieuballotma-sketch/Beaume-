@@ -1,3 +1,4 @@
+
 """Orchestrateur : analyse complete d'un dossier client."""
 from __future__ import annotations
 
@@ -124,10 +125,10 @@ class AnalyseDossier:
 
         all_chunks = []
         chunks_texte = []
-        nb_fichiers_ignores = 0
+        fichiers_ignores: list[str] = []
         for fichier in resultat.fichiers:
             if not fichier.ok:
-                nb_fichiers_ignores += 1
+                fichiers_ignores.append(fichier.chemin.name)
                 log.warning(
                     "Fichier ignore (%s) : %s",
                     fichier.chemin.name,
@@ -138,16 +139,13 @@ class AnalyseDossier:
                 all_chunks.append(chunk)
                 chunks_texte.append(chunk.texte)
 
-        if nb_fichiers_ignores:
-            log.warning(
-                "Analyse partielle : %d fichier(s) non lu(s) sur %d",
-                nb_fichiers_ignores,
-                len(resultat.fichiers),
-            )
-
         if not chunks_texte:
             log.warning("Aucun chunk exploitable dans %s", dossier)
-            return Analyse(date_reference=date_reference)
+            return Analyse(
+                date_reference=date_reference,
+                erreur="Aucun fichier exploitable dans le dossier",
+                fichiers_ignores=tuple(fichiers_ignores),
+            )
 
         selection = self.selecteur.selectionner(all_chunks)
         texte_dossier = self.selecteur.formater_pour_prompt(selection)
@@ -183,6 +181,15 @@ class AnalyseDossier:
             brut = _extraire_json(reponse.texte)
         except ErreurAnalyse as e:
             log.error("Reponse LLM illisible : %s", type(e).__name__)
-            return Analyse(date_reference=date_reference)
+            return Analyse(
+                date_reference=date_reference,
+                erreur=f"Reponse LLM illisible : {type(e).__name__}",
+                fichiers_ignores=tuple(fichiers_ignores),
+            )
 
-        return _parse_analyse(brut, date_reference)
+        analyse = _parse_analyse(brut, date_reference)
+        if fichiers_ignores:
+            analyse = analyse.model_copy(
+                update={"fichiers_ignores": tuple(fichiers_ignores)}
+            )
+        return analyse
