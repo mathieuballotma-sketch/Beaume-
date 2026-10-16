@@ -6,30 +6,22 @@ qui decide si une citation est valide.
 """
 from datetime import date
 from enum import Enum
+
 from pydantic import BaseModel
 
 from beaume.legal.ids import IdentifiantLegifrance
 
 
 class CodeJuridique(str, Enum):
-    """Codes juridiques francais.
-
-    Les 20 codes principaux sont explicites. Les 56 autres codes
-    presents dans le corpus DILA sont regroupes sous CODE_AUTRE.
-    """
-    # Codes fondamentaux
+    """Codes juridiques francais."""
     CODE_CIVIL = "code_civil"
     CODE_PENAL = "code_penal"
     CODE_TRAVAIL = "code_travail"
     CODE_COMMERCE = "code_commerce"
     CODE_CONSOMMATION = "code_consommation"
     CODE_SECURITE_SOCIALE = "code_securite_sociale"
-
-    # Procedures
     CODE_PROCEDURE_CIVILE = "code_procedure_civile"
     CODE_PROCEDURE_PENALE = "code_procedure_penale"
-
-    # Codes sectoriels majeurs
     CODE_SANTE_PUBLIQUE = "code_sante_publique"
     CODE_RURAL = "code_rural"
     CODE_TRANSPORTS = "code_transports"
@@ -45,8 +37,6 @@ class CodeJuridique(str, Enum):
     CODE_SECURITE_INTERIEURE = "code_securite_interieure"
     CODE_ETRANGERS = "code_etrangers"
     CODE_URBANISME = "code_urbanisme"
-
-    # Fourre-tout pour les 56 autres codes
     CODE_AUTRE = "code_autre"
 
 
@@ -93,6 +83,11 @@ class Citation(BaseModel):
     numero: str
     date_reference: date
     extrait: str | None = None
+    # Nouveaux champs de tracabilite (2026-10-16).
+    # - pages   : numeros de page du dossier ou le fait a ete trouve.
+    # - fichier : nom du fichier source (ex: "conclusions.pdf").
+    pages: tuple[int, ...] = ()
+    fichier: str = ""
 
 
 class StatutVerification(str, Enum):

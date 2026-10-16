@@ -36,6 +36,17 @@ def _tronquer(texte: str, longueur: int = 300) -> str:
     return t[:longueur].rstrip() + "..."
 
 
+def _formater_source_dossier(c) -> str | None:
+    """Retourne une ligne 'Source dans le dossier' si disponible."""
+    if not c.fichier:
+        return None
+    pages_str = ", ".join(str(p) for p in c.pages) if c.pages else "?"
+    return (
+        f"- **Source dans le dossier** : `{c.fichier}` "
+        f"(page(s) {pages_str})"
+    )
+
+
 def _formater_verification(v: ResultatVerification) -> str:
     c = v.citation
     lignes = [
@@ -43,6 +54,9 @@ def _formater_verification(v: ResultatVerification) -> str:
         "",
         f"- **Date de reference** : {c.date_reference.isoformat()}",
     ]
+    source = _formater_source_dossier(c)
+    if source:
+        lignes.append(source)
     if v.version:
         lignes.append(
             f"- **Identifiant Legifrance** : `{v.version.article_id.valeur}`"
@@ -60,8 +74,7 @@ def _formater_verification(v: ResultatVerification) -> str:
 
 
 def _formater_rejet(v: ResultatVerification) -> str:
-    """Formate une citation rejetee avec, si disponibles, l'extrait
-    propose par le LLM et le texte officiel."""
+    """Formate une citation rejetee avec sa provenance."""
     c = v.citation
     lignes = [
         f"### {c.code.value} - Article {c.numero} (au {c.date_reference.isoformat()})",
@@ -69,6 +82,9 @@ def _formater_rejet(v: ResultatVerification) -> str:
         f"- **Verdict** : `{v.statut.value}`",
         f"- **Raison** : {v.message}",
     ]
+    source = _formater_source_dossier(c)
+    if source:
+        lignes.append(source)
     if c.extrait:
         lignes.append(f"- **Extrait propose par le modele** : *{_tronquer(c.extrait)}*")
     if v.version:
