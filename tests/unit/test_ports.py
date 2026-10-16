@@ -1,23 +1,41 @@
 """Tests du contrat Extracteur et du registre."""
 from pathlib import Path
+
 import pytest
 
-from beaume.ports.extracteur import Extracteur
+from beaume.ports.extracteur import Extracteur, PageExtraite
 from beaume.ports.registre import RegistreExtracteurs
+
+
+def _page_unique(texte: str) -> list[PageExtraite]:
+    return [PageExtraite(
+        numero=1,
+        texte=texte,
+        debut_car=0,
+        fin_car=len(texte),
+    )]
 
 
 class FauxExtracteurPDF:
     def supporte(self, path: Path) -> bool:
         return path.suffix.lower() == ".pdf"
+
     def extraire(self, path: Path) -> str:
         return f"contenu de {path.name}"
+
+    def extraire_avec_pages(self, path: Path) -> list[PageExtraite]:
+        return _page_unique(f"contenu de {path.name}")
 
 
 class FauxExtracteurTXT:
     def supporte(self, path: Path) -> bool:
         return path.suffix.lower() == ".txt"
+
     def extraire(self, path: Path) -> str:
         return f"contenu de {path.name}"
+
+    def extraire_avec_pages(self, path: Path) -> list[PageExtraite]:
+        return _page_unique(f"contenu de {path.name}")
 
 
 def test_extracteur_conforme():
@@ -28,6 +46,15 @@ def test_extracteur_non_conforme():
     class Mauvais:
         pass
     assert not isinstance(Mauvais(), Extracteur)
+
+
+def test_extracteur_sans_pages_non_conforme():
+    class SansPages:
+        def supporte(self, path: Path) -> bool:
+            return True
+        def extraire(self, path: Path) -> str:
+            return "x"
+    assert not isinstance(SansPages(), Extracteur)
 
 
 def test_registre_choisit_bon_extracteur():
@@ -53,6 +80,8 @@ def test_ajout_extracteur_sans_modifier_registre():
             return path.suffix.lower() == ".docx"
         def extraire(self, path: Path) -> str:
             return "docx"
+        def extraire_avec_pages(self, path: Path) -> list[PageExtraite]:
+            return _page_unique("docx")
 
     r = RegistreExtracteurs()
     r.enregistrer(FauxExtracteurPDF())
