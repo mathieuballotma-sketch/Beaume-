@@ -213,3 +213,25 @@ Pipeline : extraction PDF -> chunking -> analyse LLM -> verification -> Markdown
   de "Les agissements sont-ils"), a corriger dans le prompt.
 
 **Verification** : 180 tests verts, 0 skipped (Ollama operationnel).
+# JOURNAL — Beaume
+
+## 2026-10-16 — Run Kaggle (essai mécanique, non concluant)
+
+**Objectif :** entraîner un modèle d'embedding spécialisé droit du travail.
+
+**Données :**
+- 1118 paires train / 612 faits distincts
+- 31 paires test / 15 faits distincts
+- Modèle : dangvantuan/sentence-camembert-large
+- Config : 20 epochs, batch_size=4, max_seq_length=384
+
+**Résultat observé (partiel) :**
+- Loss descendue de 1,05 à 0,15 (vs 0,38 avec 142 paires)
+- Run non terminé (kernel redémarré)
+- Cellule 4 (évaluation) jamais exécutée
+
+**Verdict :** essai mécanique. Ne prouve rien sur la qualité de retrieval.
+Le test set de 15 faits est trop petit pour conclure.
+À refaire sur un vrai test de 50 décisions.
+
+**Décision :** on met l'embedding de côté. Priorité = fiabilité de la structure.

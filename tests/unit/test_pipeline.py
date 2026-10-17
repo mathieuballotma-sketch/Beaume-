@@ -28,8 +28,15 @@ class FauxChercheur:
 class FauxGenerateur:
     def __init__(self, reponse: str) -> None:
         self._reponse = reponse
+        self.dernier_format = None
 
-    def generer(self, prompt: str, temperature: float = 0.2) -> ReponseLLM:
+    def generer(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        format=None,
+    ) -> ReponseLLM:
+        self.dernier_format = format
         return ReponseLLM(
             texte=self._reponse,
             modele="faux-test",

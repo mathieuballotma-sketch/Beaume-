@@ -8,6 +8,7 @@ from pathlib import Path
 
 from beaume.application.lecteur_dossier import LecteurDossier
 from beaume.application.prompts import construire_prompt
+from beaume.application.schemas import schema_analyse_avec_fichiers
 from beaume.application.selecteur_chunks import SelecteurChunks
 from beaume.legal.analyse import Analyse
 from beaume.legal.model import Citation, CodeJuridique
@@ -46,20 +47,62 @@ def _extraire_json(texte: str) -> dict:
     raise ErreurAnalyse("Aucun JSON trouve dans la reponse LLM")
 
 
+def _separer_code_et_numero(
+    code_brut: str, numero_brut: str,
+) -> tuple[str, str]:
+    """Filet si le LLM colle code et numero dans le meme champ."""
+    code_brut = code_brut.strip()
+    numero_brut = numero_brut.strip()
+    if " " not in code_brut:
+        return code_brut, numero_brut
+
+    prefixe, _, reste = code_brut.partition(" ")
+    try:
+        CodeJuridique(prefixe)
+    except ValueError:
+        return code_brut, numero_brut
+
+    if not numero_brut:
+        numero_brut = reste.strip()
+    return prefixe, numero_brut
+
+
 def _parse_analyse(brut: dict, date_reference: date) -> Analyse:
     citations_brutes = brut.get("citations", [])
+
+    if isinstance(citations_brutes, list):
+        log.info(
+            "Reponse LLM : cles=%r, %d citations brutes",
+            sorted(brut.keys()),
+            len(citations_brutes),
+        )
+    else:
+        log.warning(
+            "Champ 'citations' de type inattendu : %s",
+            type(citations_brutes).__name__,
+        )
+
     citations = []
-    for c in citations_brutes:
+    for index, c in enumerate(citations_brutes, start=1):
+        if not isinstance(c, dict):
+            log.warning(
+                "Citation %d ignoree : type=%s",
+                index, type(c).__name__,
+            )
+            continue
         try:
             pages_brutes = c.get("pages", [])
             pages = tuple(
                 int(p) for p in pages_brutes
                 if isinstance(p, (int, float, str)) and str(p).isdigit()
             )
+            code_brut, numero_brut = _separer_code_et_numero(
+                str(c["code"]), str(c.get("numero", "")),
+            )
             citations.append(
                 Citation(
-                    code=CodeJuridique(c["code"]),
-                    numero=str(c["numero"]),
+                    code=CodeJuridique(code_brut),
+                    numero=numero_brut,
                     date_reference=date_reference,
                     extrait=c.get("extrait"),
                     pages=pages,
@@ -67,7 +110,10 @@ def _parse_analyse(brut: dict, date_reference: date) -> Analyse:
                 )
             )
         except (KeyError, ValueError) as e:
-            log.warning("Citation ignoree : %s", type(e).__name__)
+            log.warning(
+                "Citation %d ignoree (%s) : code=%r, message=%s",
+                index, type(e).__name__, c.get("code"), e,
+            )
 
     return Analyse(
         contexte=str(brut.get("contexte", "")),
@@ -77,6 +123,50 @@ def _parse_analyse(brut: dict, date_reference: date) -> Analyse:
         citations=citations,
         date_reference=date_reference,
     )
+
+
+def _valider_provenance(
+    analyse: Analyse,
+    fichiers_disponibles: set[str],
+    pages_par_fichier: dict[str, set[int]],
+) -> Analyse:
+    """Filet de securite sur la provenance des citations.
+
+    Avec le schema enumere, ce filtre ne devrait plus s'exercer. Il
+    reste en place pour les cas ou le decodage contraint serait
+    contourne.
+
+    Regles :
+    - fichier vide    -> pages videes.
+    - fichier inconnu -> fichier="" et pages=().
+    - fichier valide  -> pages filtree sur les pages reelles du fichier.
+      Si plus aucune page ne reste, on vide les pages.
+    """
+    citations: list[Citation] = []
+    for index, c in enumerate(analyse.citations, start=1):
+        nom = (c.fichier or "").strip()
+        if not nom:
+            if c.pages:
+                log.warning(
+                    "Citation %d : fichier absent, pages videes", index,
+                )
+                c = c.model_copy(update={"pages": ()})
+        elif nom not in fichiers_disponibles:
+            log.warning(
+                "Citation %d : fichier inconnu, provenance effacee", index,
+            )
+            c = c.model_copy(update={"fichier": "", "pages": ()})
+        else:
+            pages_ok = pages_par_fichier.get(nom, set())
+            pages_filtrees = tuple(p for p in c.pages if p in pages_ok)
+            if pages_filtrees != c.pages:
+                log.warning(
+                    "Citation %d : pages invalides filtrees (%s -> %s)",
+                    index, c.pages, pages_filtrees,
+                )
+                c = c.model_copy(update={"pages": pages_filtrees})
+        citations.append(c)
+    return analyse.model_copy(update={"citations": citations})
 
 
 class AnalyseDossier:
@@ -126,6 +216,8 @@ class AnalyseDossier:
         all_chunks = []
         chunks_texte = []
         fichiers_ignores: list[str] = []
+        fichiers_lus: list[str] = []
+        pages_par_fichier: dict[str, set[int]] = {}
         for fichier in resultat.fichiers:
             if not fichier.ok:
                 fichiers_ignores.append(fichier.chemin.name)
@@ -135,9 +227,15 @@ class AnalyseDossier:
                     fichier.erreur,
                 )
                 continue
+            fichiers_lus.append(fichier.chemin.name)
             for chunk in fichier.chunks:
                 all_chunks.append(chunk)
                 chunks_texte.append(chunk.texte)
+                pages_par_fichier.setdefault(
+                    fichier.chemin.name, set(),
+                ).update(
+                    range(chunk.page_debut, chunk.page_fin + 1),
+                )
 
         if not chunks_texte:
             log.warning("Aucun chunk exploitable dans %s", dossier)
@@ -146,6 +244,11 @@ class AnalyseDossier:
                 erreur="Aucun fichier exploitable dans le dossier",
                 fichiers_ignores=tuple(fichiers_ignores),
             )
+
+        pages_max = max(
+            (max(p) for p in pages_par_fichier.values() if p),
+            default=1,
+        )
 
         selection = self.selecteur.selectionner(all_chunks)
         texte_dossier = self.selecteur.formater_pour_prompt(selection)
@@ -166,10 +269,19 @@ class AnalyseDossier:
         )
 
         prompt = construire_prompt(
-            texte_dossier, articles_candidats, date_reference,
+            texte_dossier,
+            articles_candidats,
+            date_reference,
+            fichiers_disponibles=tuple(fichiers_lus),
         )
 
-        reponse = self.generateur.generer(prompt, temperature=0.0)
+        schema = schema_analyse_avec_fichiers(
+            tuple(fichiers_lus), pages_max=pages_max,
+        )
+
+        reponse = self.generateur.generer(
+            prompt, temperature=0.0, format=schema,
+        )
         log.info(
             "LLM %s : %d tokens reponse en %.2f s",
             reponse.modele,
@@ -188,6 +300,9 @@ class AnalyseDossier:
             )
 
         analyse = _parse_analyse(brut, date_reference)
+        analyse = _valider_provenance(
+            analyse, set(fichiers_lus), pages_par_fichier,
+        )
         if fichiers_ignores:
             analyse = analyse.model_copy(
                 update={"fichiers_ignores": tuple(fichiers_ignores)}

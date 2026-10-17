@@ -17,3 +17,6 @@ dist/
 data/training/
 .env
 .env.*
+data/
+*.bak
+*.gguf

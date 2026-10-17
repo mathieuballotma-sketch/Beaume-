@@ -1,0 +1,37 @@
+{\rtf1\ansi\ansicpg1252\cocoartf2907
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\paperw11900\paperh16840\margl1440\margr1440\vieww12720\viewh7800\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 # Journal des tests \'97 Beaume\
+\
+Chronologie des tests lanc\'e9s sur le projet, avec sorties brutes du\
+terminal. Ce document sert \'e0 :\
+\
+- Comprendre ce qui a \'e9t\'e9 test\'e9, quand, et pourquoi.\
+- Voir les r\'e9sultats bruts (succ\'e8s, \'e9checs, mesures).\
+- Reproduire les tests sur une autre machine.\
+- Suivre l'\'e9volution du comportement du LLM.\
+\
+---\
+\
+## \'c9tat au 2026-10-16 (fin de session)\
+\
+- **261 tests passent.**\
+- **12 commits** depuis le d\'e9but de la session.\
+- **Tra\'e7abilit\'e9 pages** op\'e9rationnelle (extracteur \uc0\u8594  chunker \u8594  prompt \u8594  rapport).\
+- **Mode JSON natif Ollama** activ\'e9.\
+- **Citation valide** sur dossier simple (`dossier_test_001`).\
+- **Bug identifi\'e9** : le LLM invente des noms de fichiers sur dossier complexe.\
+\
+---\
+\
+## 1. Audit du corpus `legi_full.sqlite`\
+\
+### Commande\
+\
+```bash\
+python scripts/auditer_corpus.py\
+}
