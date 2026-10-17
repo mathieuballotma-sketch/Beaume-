@@ -32,9 +32,16 @@ class FauxGenerateur:
     def __init__(self, reponse: str) -> None:
         self._reponse = reponse
         self.appels = []
+        self.dernier_format = None
 
-    def generer(self, prompt: str, temperature: float = 0.2) -> ReponseLLM:
+    def generer(
+        self,
+        prompt: str,
+        temperature: float = 0.0,
+        format=None,
+    ) -> ReponseLLM:
         self.appels.append((prompt, temperature))
+        self.dernier_format = format
         return ReponseLLM(
             texte=self._reponse,
             modele="faux",
@@ -181,3 +188,18 @@ def test_analyse_dossier_chercheur_appele_par_chunk(tmp_path):
     a = AnalyseDossier(_registre(), chercheur, gen, _depot_vide(tmp_path))
     a.analyser(tmp_path, date(2024, 1, 1))
     assert len(chercheur.appels) >= 1
+
+
+def test_analyse_dossier_schema_enumere_les_fichiers(tmp_path):
+    """Le schema transmis au generateur doit contenir les fichiers extraits."""
+    _make_pdf(tmp_path / "lettre.pdf", "Contenu.")
+    gen = FauxGenerateur('{"contexte": ""}')
+    a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
+    a.analyser(tmp_path, date(2024, 1, 1))
+
+    assert gen.dernier_format is not None
+    item = gen.dernier_format["properties"]["citations"]["items"]
+    assert "enum" in item["properties"]["fichier"]
+    assert "lettre.pdf" in item["properties"]["fichier"]["enum"]
+    assert "fichier" in item["required"]
+    assert "pages" in item["required"]

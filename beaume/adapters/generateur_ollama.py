@@ -3,9 +3,10 @@
 Respecte le contrat Generateur. Utilise un modele local via Ollama.
 Aucune donnee ne quitte la machine.
 
-Mode JSON natif : Ollama supporte le constrained decoding. On lui
-passe un schema JSON simplifie (sans $ref, sans anyOf, sans const)
-pour forcer le modele a produire une structure valide.
+Mode JSON natif : Ollama supporte le constrained decoding. Le schema
+JSON est defini dans beaume.application.schemas et transmis via le
+parametre `format`. Cet adaptateur ne connait pas la structure du
+schema : il passe ce qu'on lui donne.
 """
 from __future__ import annotations
 
@@ -14,6 +15,7 @@ from typing import Any
 
 import ollama
 
+from beaume.application.schemas import SCHEMA_ANALYSE
 from beaume.ports.generateur import ReponseLLM
 from beaume.utils.logging import get_logger
 
@@ -21,40 +23,9 @@ log = get_logger("generateur_ollama")
 
 _MODELE_PAR_DEFAUT = "qwen2.5:7b-instruct"
 
-
-# Schema JSON simplifie pour l'analyse de dossier.
-# Volontairement sans $ref, $defs, anyOf, const : le constrained
-# decoding d'Ollama echoue silencieusement sur ces constructions.
-SCHEMA_ANALYSE: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "contexte": {"type": "string"},
-        "parties": {"type": "array", "items": {"type": "string"}},
-        "demandes": {"type": "array", "items": {"type": "string"}},
-        "problemes_juridiques": {
-            "type": "array",
-            "items": {"type": "string"},
-        },
-        "citations": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "code": {"type": "string"},
-                    "numero": {"type": "string"},
-                    "extrait": {"type": "string"},
-                    "pages": {
-                        "type": "array",
-                        "items": {"type": "integer"},
-                    },
-                    "fichier": {"type": "string"},
-                },
-                "required": ["code", "numero"],
-            },
-        },
-    },
-    "required": ["contexte", "citations"],
-}
+# Reexport pour compatibilite : certains tests importent SCHEMA_ANALYSE
+# depuis ce module. La definition vit dans beaume.application.schemas.
+__all__ = ["GenerateurOllama", "SCHEMA_ANALYSE"]
 
 
 class GenerateurOllama:
