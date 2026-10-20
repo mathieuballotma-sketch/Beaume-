@@ -307,7 +307,7 @@ class AnalyseDossier:
         selecteur: SelecteurChunks | None = None,
         taille_chunk: int = 600,
         chevauchement: int = 80,
-        limite_articles: int = 5,
+        limite_articles: int = 10,
         limite_candidats: int = 10,
     ) -> None:
         if limite_articles <= 0:
