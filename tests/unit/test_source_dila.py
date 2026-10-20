@@ -3,7 +3,7 @@
 Ces tests utilisent la base DILA réelle si elle est présente, sinon ils
 sont ignorés (skip). Ils vérifient les invariants suivants :
 
-- L1233-3 a 7 versions, 1240 a 2 versions, 200 CGI a ~59 versions.
+- L1233-3 a 7 versions, 1240 a 2 versions.
 - Toutes les versions d'un même article partagent le même article_id.
 - Un round-trip par DepotSQLite fonctionne.
 - Les statuts vides sont mappés en INCONNU.
@@ -15,6 +15,9 @@ Tests de non-régression (audit 2026-10-20, base synthétique) :
 - trouver_par_numero ambigu : retourne None.
 - trouver_par_numero avec article_famille_id : cible la bonne famille.
 - iter_articles : ne coupe pas les versions (pas de LIMIT SQL).
+
+Les IDs synthétiques utilisés respectent le format attendu par
+`IdentifiantLegifrance` : LEGIARTI + 12 chiffres.
 """
 from __future__ import annotations
 
@@ -53,10 +56,18 @@ def source() -> SourceDila:
 
 @pytest.fixture(scope="module")
 def articles_connus(source: SourceDila) -> dict[str, object]:
+    """Articles de référence dans une seule famille.
+
+    L1233-3 et 1240 ont toutes leurs versions dans un seul
+    article_famille_id, donc trouver_par_numero retourne l'article.
+
+    L'article 200 du CGI a plusieurs familles (republications sur
+    93 ans) : trouver_par_numero retourne None par sécurité. Il est
+    testé séparément via une requête SQL directe.
+    """
     return {
         "L1233-3": source.trouver_par_numero("L1233-3", "LEGITEXT000006072050"),
         "1240": source.trouver_par_numero("1240", "LEGITEXT000006070721"),
-        "200": source.trouver_par_numero("200", "LEGITEXT000006069577"),
     }
 
 
@@ -65,10 +76,12 @@ def source_synthetique(tmp_path):
     """Crée une mini-base DILA synthétique pour tester les cas limites.
 
     Contient :
-    - L9999-1 : deux versions même date_debut, une fermée + une ouverte
-    - L9999-2 : une version avec date_fin invalide ("inconnue")
-    - L9999-3 : deux familles distinctes (FAMILLE_A, FAMILLE_B)
-    - L9999-4 : sept versions (test iter_articles sans LIMIT SQL)
+    - LEGIARTI000000001001 : deux versions même date_debut, une fermée
+      (LEGIARTI000000001002) + une ouverte (LEGIARTI000000001003)
+    - LEGIARTI000000002001 : une version avec date_fin invalide ("inconnue")
+    - LEGIARTI000000003001 : deux familles distinctes (FAMILLE_A et
+      FAMILLE_B), numéro L9999-3
+    - LEGIARTI000000004001 : sept versions (test iter_articles sans LIMIT SQL)
     """
     chemin = tmp_path / "dila_synthetique.sqlite"
     conn = sqlite3.connect(chemin)
@@ -88,37 +101,37 @@ def source_synthetique(tmp_path):
     # Cas 1 : collision date_debut (une fermée + une ouverte)
     cur.execute(
         "INSERT INTO versions_articles_sans_conflit_source VALUES "
-        "('LEGIARTI_VERSION_FERMEE', 'LEGITEXT000006072050', 'L9999-1', "
+        "('LEGIARTI000000001002', 'LEGITEXT000006072050', 'L9999-1', "
         "'2015-01-01', '2020-01-01', 'ABROGE', 'Texte fermé', "
-        "'LEGIARTI_FAMILLE_1')"
+        "'LEGIARTI000000001001')"
     )
     cur.execute(
         "INSERT INTO versions_articles_sans_conflit_source VALUES "
-        "('LEGIARTI_VERSION_OUVERTE', 'LEGITEXT000006072050', 'L9999-1', "
+        "('LEGIARTI000000001003', 'LEGITEXT000006072050', 'L9999-1', "
         "'2015-01-01', '2999-01-01', 'VIGUEUR', 'Texte ouvert', "
-        "'LEGIARTI_FAMILLE_1')"
+        "'LEGIARTI000000001001')"
     )
 
     # Cas 2 : date_fin invalide
     cur.execute(
         "INSERT INTO versions_articles_sans_conflit_source VALUES "
-        "('LEGIARTI_DATE_INVALIDE', 'LEGITEXT000006072050', 'L9999-2', "
+        "('LEGIARTI000000002002', 'LEGITEXT000006072050', 'L9999-2', "
         "'2015-01-01', 'inconnue', 'VIGUEUR', 'Texte invalide', "
-        "'LEGIARTI_FAMILLE_2')"
+        "'LEGIARTI000000002001')"
     )
 
     # Cas 3 : deux familles même numéro
     cur.execute(
         "INSERT INTO versions_articles_sans_conflit_source VALUES "
-        "('LEGIARTI_FAMILLE_A_V1', 'LEGITEXT000006072050', 'L9999-3', "
+        "('LEGIARTI000000003002', 'LEGITEXT000006072050', 'L9999-3', "
         "'2015-01-01', '2999-01-01', 'VIGUEUR', 'Famille A', "
-        "'LEGIARTI_FAMILLE_A')"
+        "'LEGIARTI000000003001')"
     )
     cur.execute(
         "INSERT INTO versions_articles_sans_conflit_source VALUES "
-        "('LEGIARTI_FAMILLE_B_V1', 'LEGITEXT000006072050', 'L9999-3', "
+        "('LEGIARTI000000003004', 'LEGITEXT000006072050', 'L9999-3', "
         "'2018-01-01', '2999-01-01', 'VIGUEUR', 'Famille B', "
-        "'LEGIARTI_FAMILLE_B')"
+        "'LEGIARTI000000003003')"
     )
 
     # Cas 4 : article à 7 versions
@@ -126,9 +139,9 @@ def source_synthetique(tmp_path):
         cur.execute(
             "INSERT INTO versions_articles_sans_conflit_source VALUES "
             "(?, 'LEGITEXT000006072050', 'L9999-4', ?, ?, 'VIGUEUR', ?, "
-            "'LEGIARTI_FAMILLE_C')",
+            "'LEGIARTI000000004000')",
             (
-                f"LEGIARTI_C_{i}",
+                f"LEGIARTI0000000040{i+1:02d}",
                 f"2010-01-{i+1:02d}",
                 f"2020-01-{i+1:02d}",
                 f"Texte {i}",
@@ -218,15 +231,30 @@ def test_1240_a_deux_versions(articles_connus):
     assert article.code == CodeJuridique.CODE_CIVIL
 
 
-def test_200_cgi_a_au_moins_55_versions(articles_connus):
-    article = articles_connus["200"]
-    assert article is not None, "200 CGI absent"
-    assert len(article.versions) >= 55
-    dates = [v.date_debut for v in article.versions]
-    assert len(dates) == len(set(dates))
+def test_200_cgi_a_au_moins_55_versions():
+    """L'article 200 du CGI a plusieurs familles (republications).
+
+    On ne passe pas par `trouver_par_numero` (qui retournerait None
+    sur ambiguïté). On compte directement les dates distinctes en base.
+    """
+    conn = sqlite3.connect(f"file:{CHEMIN_DILA}?mode=ro", uri=True)
+    conn.row_factory = sqlite3.Row
+    cur = conn.cursor()
+    cur.execute("""
+        SELECT COUNT(DISTINCT date_debut) AS n
+        FROM versions_articles_sans_conflit_source
+        WHERE numero = '200' AND code = 'LEGITEXT000006069577'
+    """)
+    n = cur.fetchone()["n"]
+    conn.close()
+    assert n >= 55, (
+        f"200 CGI doit avoir au moins 55 dates distinctes, trouvé {n}"
+    )
 
 
 def test_toutes_versions_partagent_le_meme_article_id(articles_connus):
+    """Régression 2026-10-20 : toutes les versions d'un même article
+    doivent partager le même VersionArticle.article_id (famille_id)."""
     for numero, article in articles_connus.items():
         assert article is not None, f"{numero} non trouvé"
         ids = {v.article_id.valeur for v in article.versions}
@@ -271,7 +299,7 @@ def test_collision_date_debut_garde_version_ouverte(source_synthetique: SourceDi
         "La version ouverte doit gagner la collision, "
         f"trouvé date_fin={version.date_fin}"
     )
-    assert "LEGIARTI_VERSION_OUVERTE" in version.source, (
+    assert "LEGIARTI000000001003" in version.source, (
         f"La version conservée doit être l'ouverte, trouvé {version.source}"
     )
 
@@ -307,10 +335,10 @@ def test_trouver_par_numero_avec_famille_id(source_synthetique: SourceDila):
     cibler une famille précise en cas d'ambiguïté."""
     article = source_synthetique.trouver_par_numero(
         "L9999-3", "LEGITEXT000006072050",
-        article_famille_id="LEGIARTI_FAMILLE_A",
+        article_famille_id="LEGIARTI000000003001",
     )
     assert article is not None
-    assert article.id.valeur == "LEGIARTI_FAMILLE_A"
+    assert article.id.valeur == "LEGIARTI000000003001"
     assert article.versions[0].texte == "Famille A"
 
 
