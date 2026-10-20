@@ -36,6 +36,12 @@ class DepotArticles(Protocol):
         date_reference: date,
     ) -> tuple[Article, VersionArticle] | None: ...
 
+    def article_existe(
+        self,
+        code: CodeJuridique,
+        numero: str,
+    ) -> bool: ...
+
     def trouver_par_id(
         self,
         article_id: str,

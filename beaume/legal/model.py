@@ -72,10 +72,13 @@ class Article(BaseModel):
     versions: list[VersionArticle]
 
     def version_a(self, d: date) -> VersionArticle | None:
-        for v in self.versions:
-            if v.est_en_vigueur_a(d):
-                return v
-        return None
+        applicables = [v for v in self.versions if v.est_en_vigueur_a(d)]
+        if not applicables:
+            return None
+        # En cas de chevauchement accidentel dans le corpus, retenir la
+        # version dont la date de debut est la plus recente. L'ordre des
+        # lignes provenant de la source ne doit pas determiner le resultat.
+        return max(applicables, key=lambda version: version.date_debut)
 
 
 class Citation(BaseModel):
@@ -83,17 +86,24 @@ class Citation(BaseModel):
     numero: str
     date_reference: date
     extrait: str | None = None
-    # Nouveaux champs de tracabilite (2026-10-16).
+    # Champs de tracabilite (2026-10-16) :
     # - pages   : numeros de page du dossier ou le fait a ete trouve.
     # - fichier : nom du fichier source (ex: "conclusions.pdf").
     pages: tuple[int, ...] = ()
     fichier: str = ""
+    # Identifiant Légifrance de l'article selectionne parmi les
+    # candidats fournis au LLM (2026-10-19). Vide pour les citations
+    # construites hors du flux de selection (tests unitaires, etc.).
+    article_id: str = ""
 
 
 class StatutVerification(str, Enum):
     VALIDE = "valide"
+    NUMERO_MANQUANT = "numero_manquant"
     INTROUVABLE = "introuvable"
+    IDENTIFIANT_INCOHERENT = "identifiant_incoherent"
     VERSION_INCORRECTE = "version_incorrecte"
+    STATUT_VERSION_INCONNU = "statut_version_inconnu"
     ABROGE = "abroge"
     TEXTE_DIFFERENT = "texte_different"
     EXTRAIT_MANQUANT = "extrait_manquant"

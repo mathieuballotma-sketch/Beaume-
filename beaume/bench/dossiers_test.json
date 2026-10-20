@@ -1,8 +1,12 @@
 {
   "_meta": {
     "description": "Jeu de test minimal pour mesurer la fiabilite de Beaume sur des dossiers de licenciement economique. Chaque dossier contient un texte (converti en PDF a la volee) et les articles attendus (must_cite). Un dossier est reussi si AU MOINS UN article attendu figure parmi les citations valides.",
-    "version": 1,
-    "categorie": "licenciement_economique"
+    "version": 2,
+    "categorie": "licenciement_economique",
+    "code": "code_travail",
+    "date_reference": "2025-01-01",
+    "statut_annotations": "provisoires_non_validees_par_un_juriste",
+    "note_evaluation": "Les must_cite sont des references positives non exhaustives. Elles servent au diagnostic du prototype et ne constituent pas une verite terrain validee."
   },
   "dossiers": [
     {

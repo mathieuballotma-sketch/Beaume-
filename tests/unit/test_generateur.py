@@ -57,6 +57,44 @@ def test_faux_generateur_deterministe():
     assert g1.generer("meme prompt").texte == g2.generer("meme prompt").texte
 
 
+def test_generateur_ollama_transmet_num_ctx_et_schema(monkeypatch):
+    from beaume.adapters import generateur_ollama
+
+    appels = {}
+
+    def faux_generate(**kwargs):
+        appels.update(kwargs)
+        return {
+            "response": "{}",
+            "prompt_eval_count": 12,
+            "eval_count": 2,
+        }
+
+    monkeypatch.setattr(generateur_ollama.ollama, "generate", faux_generate)
+    schema = {"type": "object"}
+    generateur = generateur_ollama.GenerateurOllama(num_ctx=8192)
+
+    generateur.generer("prompt", format=schema)
+
+    assert appels["options"]["num_ctx"] == 8192
+    assert appels["format"] is schema
+
+
+def test_generateur_ollama_refuse_num_ctx_invalide():
+    from beaume.adapters.generateur_ollama import GenerateurOllama
+
+    with pytest.raises(ValueError, match="num_ctx"):
+        GenerateurOllama(num_ctx=0)
+
+
+def test_generateur_ollama_accepte_le_modele_configure_par_environnement(monkeypatch):
+    from beaume.adapters.generateur_ollama import GenerateurOllama
+
+    monkeypatch.setenv("BEAUME_MODELE_OLLAMA", "qwen2.5:7b-instruct")
+
+    assert GenerateurOllama().nom_modele() == "qwen2.5:7b-instruct"
+
+
 def _ollama_disponible() -> bool:
     try:
         import ollama

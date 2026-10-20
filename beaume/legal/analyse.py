@@ -17,6 +17,9 @@ class Analyse(BaseModel):
     # Nouveaux champs de tracabilite (2026-10-16).
     erreur: str | None = None
     fichiers_ignores: tuple[str, ...] = Field(default_factory=tuple)
+    # Les citations ou provenances rejetees pendant le parsing ne doivent
+    # pas disparaitre silencieusement du rapport.
+    avertissements: tuple[str, ...] = Field(default_factory=tuple)
 
     @property
     def nb_citations(self) -> int:
@@ -27,7 +30,7 @@ class Analyse(BaseModel):
         """Etat du rapport : COMPLET, PARTIEL ou ECHEC."""
         if self.erreur:
             return "ECHEC"
-        if self.fichiers_ignores:
+        if self.fichiers_ignores or self.avertissements:
             return "PARTIEL"
         if self.est_vide():
             return "ECHEC"

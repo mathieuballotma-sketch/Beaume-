@@ -1,25 +1,24 @@
-"""Benchmark de qualite : mesure la fiabilite de Beaume sur des dossiers.
+"""Benchmark de bout en bout sur des dossiers factuels synthetiques.
 
-Pour chaque dossier du jeu de test :
-  1. Convertit le texte en PDF temporaire.
-  2. Lance le pipeline complet (analyse + verification).
-  3. Compare les citations VALIDES aux articles attendus (must_cite).
-  4. Un dossier est REUSSI si AU MOINS UN article attendu figure parmi
-     les citations valides.
+Les references `must_cite` sont positives et non exhaustives. Le rapport
+mesure le rappel des references requises, sans assimiler les autres
+citations a des faux positifs. Une execution de ce script est un test
+operationnel sur le jeu indique, pas une validation juridique generale.
 
-Sortie : rapport texte + fichier JSON dans data/tmp/.
-
-Usage :
-    PYTHONPATH=. python scripts/bench_qualite.py
-    PYTHONPATH=. python scripts/bench_qualite.py --fichier beaume/bench/dossiers_test.json
+Le modele Ollama est parametrable via --modele (defaut : qwen-beaume-v1).
+Le nom du modele est trace dans le rapport JSON pour eviter de comparer
+deux executions produites par des modeles differents sans le savoir.
 """
+from __future__ import annotations
+
 import argparse
 import json
-import shutil
 import tempfile
 import time
+from collections import Counter
 from datetime import date
 from pathlib import Path
+from typing import Any
 
 import pymupdf
 
@@ -29,187 +28,395 @@ from beaume.adapters.extracteur_pdf import ExtracteurPDF
 from beaume.adapters.generateur_ollama import GenerateurOllama
 from beaume.adapters.verificateur_standard import VerificateurStandard
 from beaume.application.pipeline import PipelineAnalyse
+from beaume.bench.metriques import (
+    ReferenceArticle,
+    charger_references_dossier,
+    cle_article,
+)
 from beaume.config import paths
-from beaume.legal.normalisation import normaliser_numero
 from beaume.ports.registre import RegistreExtracteurs
-from beaume.utils.logging import get_logger
-
-log = get_logger("bench_qualite")
-
-_CHEMIN_DEFAUT = Path(__file__).parent.parent / "beaume" / "bench" / "dossiers_test.json"
 
 
-def _charger_dossiers(chemin: Path) -> list[dict]:
-    with chemin.open(encoding="utf-8") as f:
-        data = json.load(f)
-    return data["dossiers"]
+FICHIER_DEFAUT = Path(__file__).resolve().parents[1] / "beaume" / "bench" / "dossiers_test.json"
+MODELE_DEFAUT = "qwen-beaume-v1"
+
+
+class _ChercheurTrace:
+    """Decorateur de benchmark qui garde les hits de chaque chunk."""
+
+    def __init__(self, chercheur: ChercheurArticlesFTS5) -> None:
+        self.chercheur = chercheur
+        self.appels: list[list[Any]] = []
+
+    def reinitialiser(self) -> None:
+        self.appels.clear()
+
+    def chercher(self, texte: str, limite: int = 5) -> list[Any]:
+        resultats = self.chercheur.chercher(texte, limite=limite)
+        self.appels.append(resultats)
+        return resultats
+
+
+def _charger_jeu(chemin: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    with chemin.open(encoding="utf-8") as fichier:
+        data = json.load(fichier)
+    if not isinstance(data, dict) or not isinstance(data.get("dossiers"), list):
+        raise ValueError("Le fichier doit contenir une liste 'dossiers'.")
+    meta = data.get("_meta", {})
+    if not isinstance(meta, dict):
+        raise ValueError("La metadonnee '_meta' doit etre un objet.")
+    dossiers = data["dossiers"]
+    if not dossiers:
+        raise ValueError("Le jeu ne contient aucun dossier.")
+    for i, dossier in enumerate(dossiers, start=1):
+        if not isinstance(dossier, dict) or not dossier.get("texte"):
+            raise ValueError(f"Dossier {i} invalide : texte manquant.")
+        dossier.setdefault("id", f"dossier-{i:03d}")
+        charger_references_dossier(dossier, meta.get("code"))
+    return meta, dossiers
 
 
 def _creer_pdf(texte: str, chemin: Path) -> None:
-    """Convertit un texte en PDF d'une page."""
-    doc = pymupdf.open()
-    page = doc.new_page()
-    # On ecrit le texte dans une zone large, avec wrap manuel
-    rect = pymupdf.Rect(50, 50, 545, 780)
-    page.insert_textbox(rect, texte, fontsize=11)
-    doc.save(str(chemin))
-    doc.close()
+    """Ecrit un dossier de test dans un PDF et refuse le texte tronque."""
+    document = pymupdf.open()
+    try:
+        page = document.new_page()
+        rect = pymupdf.Rect(50, 50, 545, 780)
+        hauteur_restante = page.insert_textbox(rect, texte, fontsize=11)
+        if hauteur_restante < 0:
+            raise ValueError("Le texte de test depasse la page PDF temporaire.")
+        document.save(str(chemin))
+    finally:
+        document.close()
+
+    with pymupdf.open(str(chemin)) as verif:
+        texte_extrait = "\n".join(page.get_text() for page in verif)
+    mots_attendus = {mot.casefold() for mot in texte.split() if len(mot) >= 5}
+    mots_extraits = {mot.casefold() for mot in texte_extrait.split()}
+    manquants = mots_attendus - mots_extraits
+    if manquants:
+        raise ValueError(
+            "Le PDF temporaire ne contient pas tous les mots du dossier de test."
+        )
 
 
-def _construire_pipeline(depot: DepotSQLite) -> PipelineAnalyse:
+def _construire_pipeline(depot: DepotSQLite, modele: str) -> PipelineAnalyse:
     registre = RegistreExtracteurs()
     registre.enregistrer(ExtracteurPDF())
+    chercheur = _ChercheurTrace(ChercheurArticlesFTS5(depot))
     return PipelineAnalyse(
         registre=registre,
-        chercheur=ChercheurArticlesFTS5(depot),
-        generateur=GenerateurOllama(),
+        chercheur=chercheur,
+        generateur=GenerateurOllama(modele=modele),
         depot=depot,
         verificateur=VerificateurStandard(depot),
     )
 
 
-def _numeros_valides(rapport) -> set[str]:
-    """Retourne l'ensemble des numeros d'articles VALIDES (normalises)."""
-    numeros = set()
-    for v in rapport.citations_valides:
-        try:
-            numeros.add(normaliser_numero(v.citation.numero))
-        except Exception:
-            continue
-    return numeros
-
-
-def _evaluer_dossier(
-    dossier: dict,
-    pipeline: PipelineAnalyse,
-    date_reference: date,
-    workdir: Path,
-) -> dict:
-    dossier_dir = workdir / dossier["id"]
-    dossier_dir.mkdir(parents=True, exist_ok=True)
-    pdf = dossier_dir / "dossier.pdf"
-    _creer_pdf(dossier["texte"], pdf)
-
-    t0 = time.perf_counter()
+def _cle_verification(verification: Any) -> ReferenceArticle | None:
+    citation = verification.citation
+    code = getattr(citation.code, "value", citation.code)
+    numero = citation.numero
+    if not str(code or "").strip() or not str(numero or "").strip():
+        return None
     try:
-        rapport, _ = pipeline.executer(dossier_dir, date_reference)
-    except Exception as exc:
-        return {
-            "id": dossier["id"],
-            "statut": "erreur",
-            "erreur": str(exc),
-            "duree_s": time.perf_counter() - t0,
-            "citations_valides": [],
-            "must_cite": dossier["must_cite"],
-            "trouve": [],
-            "manquant": dossier["must_cite"],
-            "reussi": False,
-        }
-    duree = time.perf_counter() - t0
+        return cle_article(str(code), str(numero))
+    except (TypeError, ValueError):
+        # Une sortie LLM invalide doit être consignée comme rejetée, pas faire
+        # échouer le benchmark qui est justement chargé de la diagnostiquer.
+        return None
 
-    valides = _numeros_valides(rapport)
-    must_cite_norm = {normaliser_numero(n) for n in dossier["must_cite"]}
-    trouve = valides & must_cite_norm
-    manquant = must_cite_norm - valides
 
+def _diagnostic_couverture(
+    references: set[ReferenceArticle],
+    candidats: set[ReferenceArticle],
+) -> dict[str, Any]:
+    trouvees = references & candidats
+    absentes = references - candidats
     return {
-        "id": dossier["id"],
-        "statut": "ok",
-        "duree_s": duree,
-        "citations_valides": sorted(valides),
-        "must_cite": sorted(must_cite_norm),
-        "trouve": sorted(trouve),
-        "manquant": sorted(manquant),
-        "reussi": len(trouve) > 0,
+        "references_must_cite_dans_candidats": [list(x) for x in sorted(trouvees)],
+        "references_must_cite_absentes_des_candidats": [list(x) for x in sorted(absentes)],
+        "rappel_retrieval_must_cite": len(trouvees) / len(references) if references else 0.0,
     }
 
 
-def main(fichier: Path) -> int:
-    if not fichier.exists():
-        print(f"Fichier introuvable : {fichier}")
-        return 1
+def _diagnostic_recherche(
+    pipeline: PipelineAnalyse,
+    date_reference: date,
+    references: set[ReferenceArticle],
+) -> dict[str, Any]:
+    chercheur = pipeline.analyseur.chercheur
+    if not isinstance(chercheur, _ChercheurTrace):
+        return {
+            "n_appels_recherche": 0,
+            "limite_par_chunk": pipeline.analyseur.limite_articles,
+            "limite_candidats_total": getattr(
+                pipeline.analyseur, "limite_candidats", None,
+            ),
+            "candidats_fts5_par_chunk": [],
+            "candidats_transmis_au_llm": [],
+            **_diagnostic_couverture(references, set()),
+        }
 
-    chemin_db = paths.VECTOR / "legi_full.sqlite"
-    if not chemin_db.exists():
-        print(f"Corpus complet absent : {chemin_db}")
-        print("Lance d'abord : PYTHONPATH=. python scripts/telecharger_corpus.py")
-        return 1
+    candidats_par_chunk = []
+    candidats_transmis: set[ReferenceArticle] = set()
+    for index, resultats in enumerate(chercheur.appels, start=1):
+        candidats_fts5 = []
+        for resultat in resultats:
+            cle = cle_article(resultat.code, resultat.numero)
+            candidats_fts5.append({
+                "article_id": resultat.article_id,
+                "code": cle[0],
+                "numero": cle[1],
+            })
+        candidats_par_chunk.append({
+            "chunk": index,
+            "candidats_fts5": candidats_fts5,
+        })
 
-    dossiers = _charger_dossiers(fichier)
-    print(f"Jeu de test  : {fichier}")
-    print(f"Dossiers     : {len(dossiers)}")
-    print()
-
-    depot = DepotSQLite(chemin_db)
-    print(f"Corpus       : {depot.compter()} articles")
-    print()
-    print("Lancement du benchmark (peut prendre plusieurs minutes)...")
-    print()
-
-    pipeline = _construire_pipeline(depot)
-    date_reference = date.today()
-    resultats = []
-
-    with tempfile.TemporaryDirectory() as tmp:
-        workdir = Path(tmp)
-        for i, dossier in enumerate(dossiers, 1):
-            print(f"  [{i}/{len(dossiers)}] {dossier['id']}...", end=" ", flush=True)
-            r = _evaluer_dossier(dossier, pipeline, date_reference, workdir)
-            resultats.append(r)
-            if r["statut"] == "erreur":
-                print(f"ERREUR ({r['erreur']})")
-            else:
-                marque = "OK" if r["reussi"] else "ECHEC"
-                print(f"{marque} ({r['duree_s']:.1f}s, "
-                      f"trouve={r['trouve']}, manquant={r['manquant']})")
-
-    # Metriques
-    n_total = len(resultats)
-    n_reussis = sum(1 for r in resultats if r["reussi"])
-    n_erreurs = sum(1 for r in resultats if r["statut"] == "erreur")
-    durees = [r["duree_s"] for r in resultats if r["statut"] == "ok"]
-
-    rappel = n_reussis / n_total * 100 if n_total else 0.0
-    duree_moy = sum(durees) / len(durees) if durees else 0.0
-    duree_max = max(durees) if durees else 0.0
-
-    print()
-    print("=== Resultats ===")
-    print(f"Dossiers total    : {n_total}")
-    print(f"Dossiers reussis  : {n_reussis}")
-    print(f"Dossiers echoues  : {n_total - n_reussis - n_erreurs}")
-    print(f"Dossiers en erreur: {n_erreurs}")
-    print(f"Rappel            : {rappel:.1f} %")
-    print(f"Duree moyenne     : {duree_moy:.1f} s")
-    print(f"Duree max         : {duree_max:.1f} s")
-    print()
-
-    # Ecriture JSON
-    sortie = paths.TMP / "bench_qualite.json"
-    sortie.parent.mkdir(parents=True, exist_ok=True)
-    sortie.write_text(
-        json.dumps(
-            {
-                "fichier": str(fichier),
-                "date": date_reference.isoformat(),
-                "n_total": n_total,
-                "n_reussis": n_reussis,
-                "rappel_pct": rappel,
-                "duree_moyenne_s": duree_moy,
-                "duree_max_s": duree_max,
-                "resultats": resultats,
-            },
-            ensure_ascii=False,
-            indent=2,
-        ),
-        encoding="utf-8",
+    # Utilise exactement le classement et le plafond de candidats de
+    # l'analyseur. Sinon le benchmark surestime la couverture réellement
+    # visible par le modele sur un dossier contenant beaucoup de chunks.
+    articles_transmis = pipeline.analyseur._enrichir_articles(
+        chercheur.appels, date_reference,
     )
-    print(f"Resultats ecrits  : {sortie}")
-    return 0 if n_reussis == n_total else 1
+    for article in articles_transmis:
+        version = article.version_a(date_reference)
+        if version is None:
+            continue
+        candidats_transmis.add(
+            cle_article(article.code.value, version.numero)
+        )
+
+    return {
+        "n_appels_recherche": len(chercheur.appels),
+        "limite_par_chunk": pipeline.analyseur.limite_articles,
+        "limite_candidats_total": pipeline.analyseur.limite_candidats,
+        "candidats_fts5_par_chunk": candidats_par_chunk,
+        "candidats_transmis_au_llm": [
+            list(x) for x in sorted(candidats_transmis)
+        ],
+        **_diagnostic_couverture(references, candidats_transmis),
+    }
+
+
+def _diagnostic_citations(
+    rapport: Any,
+    candidats_transmis: set[ReferenceArticle],
+) -> tuple[list[dict[str, Any]], dict[str, int]]:
+    details = []
+    compteurs: Counter[str] = Counter()
+    for verification in rapport.verifications:
+        citation = verification.citation
+        cle = _cle_verification(verification)
+        statut = verification.statut.value
+        compteurs[statut] += 1
+        details.append({
+            "code": citation.code.value,
+            "numero": citation.numero,
+            "statut_verification": statut,
+            "est_valide": verification.est_valide,
+            "article_dans_candidats": (
+                cle in candidats_transmis if cle is not None else False
+            ),
+            "extrait_fourni": bool((citation.extrait or "").strip()),
+        })
+    return details, dict(sorted(compteurs.items()))
+
+
+def _evaluer_dossier(
+    dossier: dict[str, Any],
+    meta: dict[str, Any],
+    pipeline: PipelineAnalyse,
+    date_reference: date,
+    workdir: Path,
+) -> dict[str, Any]:
+    gold = charger_references_dossier(dossier, meta.get("code"))
+    chercheur = pipeline.analyseur.chercheur
+    if isinstance(chercheur, _ChercheurTrace):
+        chercheur.reinitialiser()
+    dossier_dir = workdir / str(dossier["id"])
+    dossier_dir.mkdir(parents=True, exist_ok=True)
+    _creer_pdf(dossier["texte"], dossier_dir / "dossier.pdf")
+
+    debut = time.perf_counter()
+    try:
+        rapport, _ = pipeline.executer(dossier_dir, date_reference)
+    except Exception as exc:
+        diagnostic_recherche = _diagnostic_recherche(
+            pipeline, date_reference, gold,
+        )
+        return {
+            "id": dossier["id"],
+            "statut_execution": "erreur",
+            "type_erreur": type(exc).__name__,
+            "duree_s": time.perf_counter() - debut,
+            "references": [list(x) for x in sorted(gold)],
+            "references_valides_trouvees": [],
+            "references_manquantes": [list(x) for x in sorted(gold)],
+            "nb_citations_rejetees": 0,
+            "citations_detail": [],
+            "statuts_citations": {},
+            **diagnostic_recherche,
+        }
+
+    duree = time.perf_counter() - debut
+    diagnostic_recherche = _diagnostic_recherche(
+        pipeline, date_reference, gold,
+    )
+    candidats_transmis = {
+        tuple(reference)
+        for reference in diagnostic_recherche["candidats_transmis_au_llm"]
+    }
+    citations_detail, statuts_citations = _diagnostic_citations(
+        rapport, candidats_transmis,
+    )
+    predictions = {
+        cle
+        for verification in rapport.verifications
+        if verification.est_valide
+        if (cle := _cle_verification(verification)) is not None
+    }
+    trouve = gold & predictions
+    return {
+        "id": dossier["id"],
+        "statut_execution": "ok",
+        "duree_s": duree,
+        "references": [list(x) for x in sorted(gold)],
+        "references_valides_trouvees": [list(x) for x in sorted(trouve)],
+        "references_manquantes": [list(x) for x in sorted(gold - predictions)],
+        "nb_citations_generees": len(rapport.verifications),
+        "nb_citations_valides": len(rapport.citations_valides),
+        "nb_citations_rejetees": len(rapport.citations_rejetees),
+        "nb_citations_valides_hors_must_cite": len(predictions - gold),
+        "rappel_must_cite": len(trouve) / len(gold),
+        "citations_detail": citations_detail,
+        "statuts_citations": statuts_citations,
+        "modele": rapport.modele_llm,
+        **diagnostic_recherche,
+    }
+
+
+def _calculer_agregats(resultats: list[dict[str, Any]]) -> dict[str, Any]:
+    total_gold = sum(len(r["references"]) for r in resultats)
+    total_hits = sum(len(r["references_valides_trouvees"]) for r in resultats)
+    total_retrieval_hits = sum(
+        len(r.get("references_must_cite_dans_candidats", []))
+        for r in resultats
+    )
+    total_cases = len(resultats)
+    erreurs = sum(r["statut_execution"] == "erreur" for r in resultats)
+    statuts_citations: Counter[str] = Counter()
+    for resultat in resultats:
+        statuts_citations.update(resultat.get("statuts_citations", {}))
+    succes_partiel = sum(bool(r["references_valides_trouvees"]) for r in resultats)
+    succes_complet = sum(
+        set(map(tuple, r["references_valides_trouvees"])) == set(map(tuple, r["references"]))
+        for r in resultats
+    )
+    return {
+        "n_dossiers": total_cases,
+        "n_erreurs_execution": erreurs,
+        "n_references_must_cite": total_gold,
+        "rappel_micro_must_cite": total_hits / total_gold if total_gold else 0.0,
+        "n_references_must_cite_dans_candidats": total_retrieval_hits,
+        "rappel_micro_retrieval_must_cite": (
+            total_retrieval_hits / total_gold if total_gold else 0.0
+        ),
+        "rappel_macro_must_cite": (
+            sum(r["rappel_must_cite"] for r in resultats if "rappel_must_cite" in r)
+            / total_cases
+        ),
+        "taux_dossiers_avec_au_moins_une_reference": succes_partiel / total_cases,
+        "taux_dossiers_avec_toutes_les_references": succes_complet / total_cases,
+        "n_citations_rejetees": sum(r.get("nb_citations_rejetees", 0) for r in resultats),
+        "statuts_citations": dict(sorted(statuts_citations.items())),
+        "n_citations_valides_hors_must_cite": sum(
+            r.get("nb_citations_valides_hors_must_cite", 0) for r in resultats
+        ),
+        "duree_moyenne_s": (
+            sum(r.get("duree_s", 0.0) for r in resultats if r["statut_execution"] == "ok")
+            / max(1, sum(r["statut_execution"] == "ok" for r in resultats))
+        ),
+    }
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--fichier", type=Path, default=FICHIER_DEFAUT)
+    parser.add_argument("--base", type=Path, default=paths.VECTOR / "legi_full.sqlite")
+    parser.add_argument("--date-reference", type=date.fromisoformat, default=None)
+    parser.add_argument("--sortie", type=Path, default=None)
+    parser.add_argument(
+        "--modele",
+        default=MODELE_DEFAUT,
+        help="Modele Ollama a tester (defaut : qwen-beaume-v1).",
+    )
+    args = parser.parse_args()
+    if not args.fichier.is_file():
+        parser.error(f"Jeu de test introuvable : {args.fichier}")
+    if not args.base.is_file():
+        parser.error(f"Corpus introuvable : {args.base}")
+
+    meta, dossiers = _charger_jeu(args.fichier)
+    date_brute = args.date_reference or meta.get("date_reference")
+    if isinstance(date_brute, str):
+        date_reference = date.fromisoformat(date_brute)
+    elif isinstance(date_brute, date):
+        date_reference = date_brute
+    else:
+        parser.error(
+            "Date non definie : fournir --date-reference ou _meta.date_reference."
+        )
+
+    depot = DepotSQLite(args.base, lecture_seule=True)
+    pipeline = _construire_pipeline(depot, args.modele)
+    print(
+        f"Dossiers : {len(dossiers)} | references : "
+        f"{meta.get('statut_annotations', 'non documente')}"
+    )
+    print(f"Corpus   : {depot.compter()} articles | date : {date_reference.isoformat()}")
+    print(f"Modele   : {args.modele}")
+
+    resultats: list[dict[str, Any]] = []
+    with tempfile.TemporaryDirectory(prefix="beaume-bench-") as tmp:
+        workdir = Path(tmp)
+        for i, dossier in enumerate(dossiers, start=1):
+            print(f"[{i}/{len(dossiers)}] {dossier['id']}...", end=" ", flush=True)
+            resultat = _evaluer_dossier(dossier, meta, pipeline, date_reference, workdir)
+            resultats.append(resultat)
+            if resultat["statut_execution"] == "erreur":
+                print(f"ERREUR ({resultat['type_erreur']})")
+            else:
+                print(
+                    f"rappel must_cite={resultat['rappel_must_cite']:.0%}, "
+                    f"retrieval={resultat['rappel_retrieval_must_cite']:.0%}, "
+                    f"rejetees={resultat['nb_citations_rejetees']}"
+                )
+
+    resultat_final = {
+        "type_evaluation": "pipeline_complet_synthetique",
+        "jeu": str(args.fichier),
+        "statut_annotations": meta.get("statut_annotations", "non_documente"),
+        "date_reference": date_reference.isoformat(),
+        "corpus": str(args.base),
+        "n_articles_corpus": depot.compter(),
+        "modele": args.modele,
+        "metriques": _calculer_agregats(resultats),
+        "resultats": resultats,
+        "interpretation": (
+            "Les must_cite sont des references positives non exhaustives et "
+            "non relues par un juriste. Ces chiffres sont un diagnostic sur "
+            "ce petit jeu synthetique, pas une validation juridique."
+        ),
+    }
+    sortie = args.sortie or paths.TMP / f"bench_qualite_{args.modele.replace(':', '_')}.json"
+    sortie.parent.mkdir(parents=True, exist_ok=True)
+    sortie.write_text(json.dumps(resultat_final, ensure_ascii=False, indent=2), encoding="utf-8")
+    print(json.dumps(resultat_final["metriques"], ensure_ascii=False, indent=2))
+    print(f"Rapport : {sortie}")
+    return 1 if resultat_final["metriques"]["n_erreurs_execution"] else 0
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--fichier", type=Path, default=_CHEMIN_DEFAUT)
-    args = parser.parse_args()
-    raise SystemExit(main(args.fichier))
+    raise SystemExit(main())

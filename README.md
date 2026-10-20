@@ -6,18 +6,25 @@ Promesse : aucune donnee client ne quitte votre machine. Jamais.
 
 ---
 
-## Etat actuel (2026-10-16)
+## Etat actuel (2026-10-19)
 
 Prototype avance. Non utilisable en production. L'etat est documente
 dans docs/PROMESSES.md.
 
-- 261 tests passent.
+- 319 tests passent, 2 sont ignores dans l'environnement de verification.
 - Pipeline complet : dossier PDF -> extraction -> analyse LLM ->
   verification -> rapport Markdown.
+- Les citations choisissent un `article_id` candidat; code, numero et
+  extrait sont reconstruits depuis le corpus local.
 - Tracabilite : chaque citation indique le fichier et la page source.
-- Verification : 6 verdicts (VALIDE, INTROUVABLE, VERSION_INCORRECTE,
-  ABROGE, TEXTE_DIFFERENT, EXTRAIT_MANQUANT).
+- Verification : verdicts distincts pour numero absent, identifiant incoherent,
+  article/version introuvable, statut source inconnu et extrait manquant ou
+  different. Une version historique marquee `ABROGE` reste verifiable si sa
+  periode couvre la date de reference.
 - Etats de rapport : COMPLET, PARTIEL, ECHEC.
+
+Ces resultats sont des tests logiciels. Ils ne valident pas la pertinence
+juridique du moteur ni les labels synthetiques d'entrainement.
 
 ---
 
@@ -48,6 +55,7 @@ dans docs/PROMESSES.md.
     source .venv/bin/activate
     pip install -e .
     ollama pull qwen2.5:7b-instruct
+    export BEAUME_MODELE_OLLAMA=qwen2.5:7b-instruct
 
 ---
 
@@ -115,7 +123,7 @@ Regle d'extension : ajouter une fonctionnalite = 1 fichier + 1 test
 | Composant | Technologie |
 |---|---|
 | Langage | Python 3.12 |
-| LLM | Ollama (qwen2.5:7b-instruct) |
+| LLM | Ollama (defaut `qwen-beaume-v1`, configurable avec `BEAUME_MODELE_OLLAMA`) |
 | Recherche articles | SQLite FTS5 |
 | Extraction PDF | PyMuPDF |
 | Modeles Pydantic | Pydantic v2 |

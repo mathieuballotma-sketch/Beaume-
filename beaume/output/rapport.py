@@ -86,7 +86,9 @@ def _formater_rejet(v: ResultatVerification) -> str:
     if source:
         lignes.append(source)
     if c.extrait:
-        lignes.append(f"- **Extrait propose par le modele** : *{_tronquer(c.extrait)}*")
+        lignes.append(
+            f"- **Extrait issu du corpus local** : *{_tronquer(c.extrait)}*"
+        )
     if v.version:
         lignes.append(
             f"- **Texte officiel (extrait)** : *{_tronquer(v.version.texte)}*"
@@ -101,12 +103,16 @@ def _ligne_etat(analyse: Analyse) -> list[str]:
     if etat == "COMPLET":
         return ["- **Etat** : COMPLET", ""]
     if etat == "PARTIEL":
-        lignes = [
-            "- **Etat** : PARTIEL",
-            f"- **Fichiers ignores** : {len(analyse.fichiers_ignores)}",
-        ]
-        for nom in analyse.fichiers_ignores:
-            lignes.append(f"  - `{nom}`")
+        lignes = ["- **Etat** : PARTIEL"]
+        if analyse.fichiers_ignores:
+            lignes.append(
+                f"- **Fichiers ignores** : {len(analyse.fichiers_ignores)}"
+            )
+            for nom in analyse.fichiers_ignores:
+                lignes.append(f"  - `{nom}`")
+        if analyse.avertissements:
+            lignes.append("- **Avertissements** :")
+            lignes.extend(f"  - {message}" for message in analyse.avertissements)
         lignes.append("")
         return lignes
     lignes = ["- **Etat** : ECHEC"]
@@ -121,7 +127,7 @@ def rendre_markdown(rapport: Rapport) -> str:
     lignes = [
         "# Rapport d'analyse - Beaume",
         "",
-        f"- **Dossier** : `{rapport.dossier}`",
+        f"- **Dossier** : `{rapport.dossier.name}`",
         f"- **Date de reference** : {rapport.date_reference.isoformat()}",
         f"- **Modele LLM** : {rapport.modele_llm}",
         f"- **Duree d'analyse** : {rapport.duree_s:.2f} s",

@@ -62,13 +62,21 @@ CREATE VIRTUAL TABLE IF NOT EXISTS articles_fts USING fts5(
 class DepotSQLite:
     """Depot d'articles base sur SQLite + FTS5."""
 
-    def __init__(self, chemin: Path) -> None:
+    def __init__(self, chemin: Path, *, lecture_seule: bool = False) -> None:
         self.chemin = Path(chemin)
-        self.chemin.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.chemin))
+        if lecture_seule:
+            if not self.chemin.is_file():
+                raise FileNotFoundError(self.chemin)
+            uri = f"{self.chemin.resolve().as_uri()}?mode=ro"
+            self._conn = sqlite3.connect(uri, uri=True)
+            self._conn.execute("PRAGMA query_only = ON")
+        else:
+            self.chemin.parent.mkdir(parents=True, exist_ok=True)
+            self._conn = sqlite3.connect(str(self.chemin))
         self._conn.row_factory = sqlite3.Row
-        self._conn.executescript(_SCHEMA)
-        self._conn.commit()
+        if not lecture_seule:
+            self._conn.executescript(_SCHEMA)
+            self._conn.commit()
 
     # ------------------------------------------------------------------
     # Ecriture
@@ -203,13 +211,44 @@ class DepotSQLite:
             versions=versions,
         )
 
+        # Reprendre la ligne exacte selectionnee par la requete datee. En
+        # cas d'intervalles qui se chevauchent, ORDER BY date_debut DESC
+        # choisit la version la plus recente; ne pas revenir ensuite a la
+        # premiere version applicable dans l'ordre SQL ascendant.
+        date_debut_selectionnee = date.fromisoformat(ligne["date_debut"])
         version_trouvee = next(
-            v for v in versions
-            if v.date_debut <= date_reference
-            and (v.date_fin is None or v.date_fin >= date_reference)
+            (
+                version for version in versions
+                if version.date_debut == date_debut_selectionnee
+            ),
+            None,
         )
-
+        if version_trouvee is None:
+            return None
         return article, version_trouvee
+
+    def article_existe(
+        self,
+        code: CodeJuridique,
+        numero: str,
+    ) -> bool:
+        """Indique si le corpus connaît une version quelconque de l'article.
+
+        Cette recherche ignore volontairement la date : elle sert à distinguer
+        un article absent du corpus d'un article connu mais sans version
+        applicable à la date demandée.
+        """
+        ligne = self._conn.execute(
+            """
+            SELECT 1
+            FROM articles a
+            JOIN versions v ON v.article_id = a.id
+            WHERE a.code = ? AND v.numero = ?
+            LIMIT 1
+            """,
+            (code.value, normaliser_numero(numero)),
+        ).fetchone()
+        return ligne is not None
 
     def trouver_par_id(
         self,

@@ -15,6 +15,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+corpus = [
+    "lxml>=5,<7",
+]
 dev = [
     "pytest>=8,<9",
 ]

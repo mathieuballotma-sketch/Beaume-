@@ -8,6 +8,29 @@ terminal. Ce document sert a :
 - Reproduire les tests sur une autre machine.
 - Suivre l'evolution du comportement du LLM.
 
+## Vérification code du 2026-10-19
+
+Commande exécutée depuis `/Users/mathieubellot/Projets/beaume` :
+
+```bash
+TMPDIR=/private/tmp PYTEST_ADDOPTS='-p no:cacheprovider' .venv/bin/pytest -q
+```
+
+Résultat : **319 passed, 2 skipped** en 24,27 s. Les tests Ollama réels ont
+été ignorés car le service local n'était pas accessible depuis l'environnement
+de vérification. `python -m compileall -q beaume scripts tests` et
+`git diff --check` ont réussi.
+
+Le nouveau `scripts/verifier_dataset.py` a aussi audité un échantillon de cinq
+lignes de l'ancien `data/entrainement/train_llm.jsonl` : **5/5 erreurs de
+structure**, car ces lignes ne contiennent pas le marqueur de dossier/candidat
+du nouveau contrat à base d'`article_id`. Aucun jeu `train_llm_v2.jsonl` ni son
+manifeste correspondant n'a été produit pendant cette vérification : la
+génération Ollama n'a pas été exécutée.
+
+Ces tests confirment des invariants logiciels. Ils ne valident ni les faits
+synthétiques, ni la pertinence des articles, ni une fiabilité juridique.
+
 ---
 
 ## Etat au 2026-10-16 (fin de session)

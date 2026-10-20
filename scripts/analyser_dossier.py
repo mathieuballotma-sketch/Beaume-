@@ -91,14 +91,14 @@ def _construire_depot_demo() -> DepotSQLite:
 def main(dossier: str, date_str: str | None) -> int:
     dossier_path = Path(dossier).expanduser().resolve()
     if not dossier_path.exists():
-        log.error("Dossier introuvable : %s", dossier_path)
+        log.error("Dossier introuvable")
         return 1
 
     date_ref = (
         date.fromisoformat(date_str) if date_str else date.today()
     )
 
-    log.info("Analyse : %s au %s", dossier_path, date_ref)
+    log.info("Analyse locale demarree (date de reference=%s)", date_ref)
 
     depot = _construire_depot()
     registre = _construire_registre()
@@ -123,13 +123,13 @@ def main(dossier: str, date_str: str | None) -> int:
         )
 
     print()
-    print(f"Dossier         : {dossier_path}")
+    print(f"Dossier         : {nom_dossier}")
     print(f"Date reference  : {date_ref}")
     print(f"Citations       : {len(rapport.verifications)} "
           f"({len(rapport.citations_valides)} valides, "
           f"{len(rapport.citations_rejetees)} rejetees)")
     print(f"Duree           : {rapport.duree_s:.2f} s")
-    print(f"Rapport ecrit   : {chemin_sortie}")
+    print(f"Rapport ecrit   : {chemin_sortie.name}")
     print()
     print(profil.rapport())
     return 0

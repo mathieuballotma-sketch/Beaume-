@@ -87,6 +87,23 @@ def test_article_aucune_version_sur_plage():
     assert art.version_a(date(1990, 1, 1)) is None
 
 
+def test_article_choisit_la_version_la_plus_recente_en_cas_de_chevauchement():
+    art = Article(
+        id=IdentifiantLegifrance(valeur="LEGIARTI000006900898"),
+        code=CodeJuridique.CODE_TRAVAIL,
+        numero="L. 1234-1",
+        versions=[
+            _v(date(2018, 1, 1), date(2025, 12, 31)),
+            _v(date(2020, 1, 1), date(2022, 12, 31)),
+        ],
+    )
+
+    version = art.version_a(date(2021, 1, 1))
+
+    assert version is not None
+    assert version.date_debut == date(2020, 1, 1)
+
+
 def test_version_immutable():
     v = _v(date(2020, 1, 1), None)
     with pytest.raises(ValidationError):
