@@ -21,3 +21,7 @@ data/
 *.bak
 *.gguf
 .env
+
+# Organisation locale des agents
+/AGENTS.md
+/docs/equipe/
