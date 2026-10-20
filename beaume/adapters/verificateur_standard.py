@@ -1,15 +1,24 @@
 """Adaptateur standard du verificateur de citations.
 
-Confronte une Citation produite par le LLM au corpus legal.
-Regles strictes :
-  - Article absent          -> INTROUVABLE
-  - Aucune version a la date -> VERSION_INCORRECTE
-  - Article abroge          -> ABROGE
-  - Extrait non present     -> TEXTE_DIFFERENT
-  - Sinon                   -> VALIDE
+Confronte une Citation au corpus legal. Depuis la refonte du
+2026-10-19, la Citation est hydratee par l'application (code, numero,
+extrait viennent de SQLite, pas du LLM). Le verificateur reste la
+derniere barriere : il verifie l'existence de l'article, la version
+applicable a la date, la lisibilite du statut et la coherence de l'extrait.
 
-La comparaison d'extrait est insensible aux accents, a la casse et
-aux espaces multiples, mais elle est STRICTE sur le contenu.
+Regles strictes :
+  - Numero absent            -> NUMERO_MANQUANT
+  - Article absent           -> INTROUVABLE
+  - Aucune version a la date -> VERSION_INCORRECTE
+  - Statut source inconnu   -> STATUT_VERSION_INCONNU
+  - Extrait non present      -> EXTRAIT_MANQUANT
+  - Extrait different        -> TEXTE_DIFFERENT
+  - Sinon                    -> VALIDE
+
+Le statut ABROGE de la source ne rejette pas a lui seul une version
+historique : si ses dates encadrent la date de reference, elle peut
+etre la version applicable a cette date. S'il manque la date de fin
+d'une version marquee ABROGE, le corpus est insuffisant pour conclure.
 """
 import re
 import unicodedata
@@ -20,6 +29,7 @@ from beaume.legal.model import (
     StatutVerification,
     StatutVersion,
 )
+from beaume.legal.normalisation import normaliser_numero
 from beaume.ports.depot_articles import DepotArticles
 from beaume.utils.logging import get_logger
 
@@ -48,17 +58,51 @@ class VerificateurStandard:
         self.depot = depot
 
     def verifier(self, citation: Citation) -> ResultatVerification:
-        res = self.depot.trouver(
-            citation.code, citation.numero, citation.date_reference,
-        )
+        if not citation.numero.strip():
+            return ResultatVerification(
+                statut=StatutVerification.NUMERO_MANQUANT,
+                citation=citation,
+                message="Numero d'article absent : reference incomplete.",
+            )
+
+        if citation.article_id:
+            article = self.depot.trouver_par_id(
+                citation.article_id, citation.date_reference,
+            )
+            if article is None:
+                return ResultatVerification(
+                    statut=StatutVerification.INTROUVABLE,
+                    citation=citation,
+                    message="Identifiant d'article introuvable dans le corpus.",
+                )
+            version = article.version_a(citation.date_reference)
+            if version is None:
+                return ResultatVerification(
+                    statut=StatutVerification.VERSION_INCORRECTE,
+                    citation=citation,
+                    message="Article connu mais aucune version a cette date.",
+                )
+            if (
+                article.code != citation.code
+                or normaliser_numero(version.numero)
+                != normaliser_numero(citation.numero)
+            ):
+                return ResultatVerification(
+                    statut=StatutVerification.IDENTIFIANT_INCOHERENT,
+                    citation=citation,
+                    message=(
+                        "Le code ou le numero ne correspond pas a "
+                        "l'identifiant d'article."
+                    ),
+                )
+            res = (article, version)
+        else:
+            res = self.depot.trouver(
+                citation.code, citation.numero, citation.date_reference,
+            )
 
         if res is None:
-            # Deux cas : article totalement absent, ou article present
-            # mais aucune version a la date. On distingue pour la
-            # tracabilite : si l'article existe a une autre date,
-            # c'est VERSION_INCORRECTE, sinon INTROUVABLE.
-            existe_autre_date = self._article_existe_a_une_autre_date(citation)
-            if existe_autre_date:
+            if self.depot.article_existe(citation.code, citation.numero):
                 return ResultatVerification(
                     statut=StatutVerification.VERSION_INCORRECTE,
                     citation=citation,
@@ -72,12 +116,26 @@ class VerificateurStandard:
 
         article, version = res
 
-        if version.statut == StatutVersion.ABROGE:
+        if version.statut == StatutVersion.INCONNU:
             return ResultatVerification(
-                statut=StatutVerification.ABROGE,
+                statut=StatutVerification.STATUT_VERSION_INCONNU,
                 citation=citation,
                 version=version,
-                message="Article abroge a cette date.",
+                message=(
+                    "Le statut de cette version est inconnu dans le corpus; "
+                    "la citation ne peut pas etre validee automatiquement."
+                ),
+            )
+
+        if version.statut == StatutVersion.ABROGE and version.date_fin is None:
+            return ResultatVerification(
+                statut=StatutVerification.VERSION_INCORRECTE,
+                citation=citation,
+                version=version,
+                message=(
+                    "Version marquee abrogee mais sans date de fin; "
+                    "sa periode d'applicabilite n'est pas verifiable."
+                ),
             )
 
         if not citation.extrait or not citation.extrait.strip():
@@ -88,16 +146,15 @@ class VerificateurStandard:
                 message="Aucun extrait fourni : citation non verifiable.",
             )
 
-        if citation.extrait:
-            extrait_norm = _normaliser(citation.extrait)
-            texte_norm = _normaliser(version.texte)
-            if extrait_norm and extrait_norm not in texte_norm:
-                return ResultatVerification(
-                    statut=StatutVerification.TEXTE_DIFFERENT,
-                    citation=citation,
-                    version=version,
-                    message="L'extrait cite ne figure pas dans le texte officiel.",
-                )
+        extrait_norm = _normaliser(citation.extrait)
+        texte_norm = _normaliser(version.texte)
+        if extrait_norm and extrait_norm not in texte_norm:
+            return ResultatVerification(
+                statut=StatutVerification.TEXTE_DIFFERENT,
+                citation=citation,
+                version=version,
+                message="L'extrait cite ne figure pas dans le texte officiel.",
+            )
 
         return ResultatVerification(
             statut=StatutVerification.VALIDE,
@@ -110,17 +167,3 @@ class VerificateurStandard:
         self, citations: list[Citation]
     ) -> list[ResultatVerification]:
         return [self.verifier(c) for c in citations]
-
-    def _article_existe_a_une_autre_date(self, citation: Citation) -> bool:
-        """Verifie si l'article existe a une autre date quelconque.
-
-        Utilise une date tres ancienne et une date tres lointaine pour
-        balayer toutes les versions possibles.
-        """
-        from datetime import date
-        tres_ancien = date(1900, 1, 1)
-        tres_futur = date(2100, 1, 1)
-        for d in (tres_ancien, tres_futur):
-            if self.depot.trouver(citation.code, citation.numero, d):
-                return True
-        return False

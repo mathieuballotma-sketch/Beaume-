@@ -74,7 +74,7 @@ class IngestionDossier:
 
         nb_total = len(chunks_a_indexer)
         if nb_total == 0:
-            log.info("Aucun chunk a indexer dans %s", dossier)
+            log.info("Aucun chunk a indexer")
             return RapportIngestion(
                 chemin_dossier=dossier,
                 nb_fichiers_ok=resultat.nb_ok,
@@ -102,8 +102,8 @@ class IngestionDossier:
         self.index.ajouter(elements)
 
         log.info(
-            "Ingestion %s : %d fichiers, %d chunks indexes",
-            dossier, resultat.nb_ok, len(elements),
+            "Ingestion terminee : %d fichiers, %d chunks indexes",
+            resultat.nb_ok, len(elements),
         )
 
         return RapportIngestion(

@@ -30,6 +30,16 @@ def test_rendu_complet_affiche_complet():
     assert "ECHEC" not in md
 
 
+def test_rapport_ne_revele_pas_le_chemin_local_complet():
+    md = rendre_markdown(_rapport(Analyse(
+        date_reference=date(2024, 1, 1),
+        contexte="Un fait.",
+    )))
+
+    assert "`test`" in md
+    assert "/tmp/" not in md
+
+
 def test_rendu_partiel_affiche_fichiers_ignores():
     a = Analyse(
         date_reference=date(2024, 1, 1),
@@ -41,6 +51,18 @@ def test_rendu_partiel_affiche_fichiers_ignores():
     assert "scan.pdf" in md
     assert "image.jpg" in md
     assert "COMPLET" not in md
+
+
+def test_rendu_partiel_affiche_avertissements():
+    a = Analyse(
+        date_reference=date(2024, 1, 1),
+        contexte="Un fait.",
+        avertissements=("Aucun article candidat n'a ete trouve.",),
+    )
+    md = rendre_markdown(_rapport(a))
+
+    assert "PARTIEL" in md
+    assert "Aucun article candidat" in md
 
 
 def test_rendu_echec_affiche_erreur():

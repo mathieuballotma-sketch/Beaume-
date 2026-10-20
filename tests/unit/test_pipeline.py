@@ -10,6 +10,7 @@ from beaume.adapters.extracteur_pdf import ExtracteurPDF
 from beaume.adapters.source_fichier_local import SourceFichierLocal
 from beaume.adapters.verificateur_standard import VerificateurStandard
 from beaume.application.pipeline import PipelineAnalyse
+from beaume.ports.depot_articles import ResultatRechercheArticle
 from beaume.ports.generateur import ReponseLLM
 from beaume.ports.registre import RegistreExtracteurs
 
@@ -19,7 +20,22 @@ FIXTURE = Path(__file__).parent.parent / "fixtures" / "articles_test.json"
 
 class FauxChercheur:
     def __init__(self, resultats=None):
-        self.resultats = resultats or []
+        self.resultats = resultats if resultats is not None else [
+            ResultatRechercheArticle(
+                article_id="LEGIARTI000006900898",
+                code="code_travail",
+                numero="L. 1234-1",
+                extrait="",
+                score=1.0,
+            ),
+            ResultatRechercheArticle(
+                article_id="LEGIARTI000033020517",
+                code="code_civil",
+                numero="1240",
+                extrait="",
+                score=0.9,
+            ),
+        ]
 
     def chercher(self, texte, limite=5):
         return self.resultats
@@ -62,7 +78,7 @@ def _registre() -> RegistreExtracteurs:
 
 
 def _construire_pipeline(tmp_path, reponse_llm: str) -> PipelineAnalyse:
-    depot = DepotSQLite(tmp_path / "legi.sqlite")
+    depot = DepotSQLite(tmp_path / "_db" / "legi.sqlite")
     depot.enregistrer(SourceFichierLocal(FIXTURE).charger())
     verificateur = VerificateurStandard(depot)
     return PipelineAnalyse(
@@ -83,7 +99,11 @@ def test_pipeline_dossier_vide(tmp_path):
 
 def test_pipeline_avec_citation_valide(tmp_path):
     _make_pdf(tmp_path / "lettre.pdf", "Le salarie conteste son licenciement.")
-    reponse = '{"contexte": "Contestation.", "citations": [{"code": "code_civil", "numero": "1240", "extrait": "dommage"}]}'
+    reponse = (
+        '{"contexte": "Contestation.", "citations": [{'
+        '"article_id": "LEGIARTI000033020517", '
+        '"fichier": "lettre.pdf", "pages": [1]}]}'
+    )
     pipeline = _construire_pipeline(tmp_path, reponse)
     rapport, md = pipeline.executer(tmp_path, date(2024, 1, 1))
 
@@ -95,13 +115,18 @@ def test_pipeline_avec_citation_valide(tmp_path):
 
 def test_pipeline_avec_citation_rejetee(tmp_path):
     _make_pdf(tmp_path / "lettre.pdf", "Un fait.")
-    reponse = '{"contexte": "Test.", "citations": [{"code": "code_civil", "numero": "9999"}]}'
+    reponse = (
+        '{"contexte": "Test.", "citations": [{'
+        '"article_id": "LEGIARTI999999999999", '
+        '"fichier": "lettre.pdf", "pages": [1]}]}'
+    )
     pipeline = _construire_pipeline(tmp_path, reponse)
     rapport, md = pipeline.executer(tmp_path, date(2024, 1, 1))
 
     assert len(rapport.citations_valides) == 0
-    assert len(rapport.citations_rejetees) == 1
-    assert "rejetees" in md
+    assert rapport.citations_rejetees == []
+    assert rapport.analyse.etat == "PARTIEL"
+    assert "PARTIEL" in md
 
 
 def test_pipeline_ecrit_fichier(tmp_path):

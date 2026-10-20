@@ -83,7 +83,7 @@ class LecteurDossier:
 
             extracteur = self.registre.pour(fichier)
             if extracteur is None:
-                log.info("Format non supporte : %s", fichier.name)
+                log.info("Format non supporte : %s", fichier.suffix)
                 resultat.fichiers.append(
                     FichierExtrait(
                         chemin=fichier,
@@ -115,11 +115,11 @@ class LecteurDossier:
                     )
                 )
                 log.info(
-                    "Extrait : %s (%d pages, %d caracteres, %d chunks)",
-                    fichier.name, len(pages), len(texte), len(chunks),
+                    "Document extrait (%d pages, %d caracteres, %d chunks)",
+                    len(pages), len(texte), len(chunks),
                 )
             except Exception as exc:  # noqa: BLE001
-                log.error("Echec sur %s : %s", fichier.name, exc)
+                log.error("Echec extraction (type=%s)", type(exc).__name__)
                 try:
                     doc.echouer(str(exc))
                 except TransitionIllegale:

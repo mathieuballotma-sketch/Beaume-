@@ -112,3 +112,23 @@ def test_chunks_immuables(tmp_path):
     lecteur = LecteurDossier(_registre())
     r = lecteur.lire(tmp_path)
     assert isinstance(r.fichiers[0].chunks, tuple)
+
+
+def test_logs_ne_contiennent_ni_nom_client_ni_message_d_erreur(tmp_path, caplog):
+    nom_confidentiel = "CLIENT_CONFIDENTIEL.pdf"
+    (tmp_path / nom_confidentiel).write_bytes(b"pdf factice")
+
+    class ExtracteurEnErreur:
+        def extraire_avec_pages(self, fichier):
+            raise RuntimeError("CONTENU_CLIENT_CONFIDENTIEL")
+
+    class Registre:
+        def pour(self, fichier):
+            return ExtracteurEnErreur()
+
+    lecteur = LecteurDossier(Registre())
+    lecteur.lire(tmp_path)
+
+    assert nom_confidentiel not in caplog.text
+    assert "CONTENU_CLIENT_CONFIDENTIEL" not in caplog.text
+    assert "RuntimeError" in caplog.text

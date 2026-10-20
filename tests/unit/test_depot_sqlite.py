@@ -167,6 +167,43 @@ def test_trouver_avec_deux_versions(tmp_path):
     assert version_2020.statut == StatutVersion.EN_VIGUEUR
 
 
+def test_trouver_choisit_la_version_la_plus_recente_en_cas_de_chevauchement(tmp_path):
+    identifiant = "LEGIARTI000009999991"
+    depot = DepotSQLite(tmp_path / "legi.sqlite")
+    depot.enregistrer([
+        Article(
+            id=IdentifiantLegifrance(valeur=identifiant),
+            code=CodeJuridique.CODE_TRAVAIL,
+            numero="L. 9999-1",
+            versions=[
+                _version(
+                    identifiant,
+                    "L. 9999-1",
+                    date(2018, 1, 1),
+                    date(2025, 12, 31),
+                    "Ancienne version chevauchante.",
+                ),
+                _version(
+                    identifiant,
+                    "L. 9999-1",
+                    date(2020, 1, 1),
+                    date(2022, 12, 31),
+                    "Version plus recente choisie.",
+                ),
+            ],
+        )
+    ])
+
+    resultat = depot.trouver(
+        CodeJuridique.CODE_TRAVAIL, "L. 9999-1", date(2021, 1, 1),
+    )
+
+    assert resultat is not None
+    _, version = resultat
+    assert version.date_debut == date(2020, 1, 1)
+    assert "plus recente" in version.texte
+
+
 def test_recherche_texte_simple(tmp_path):
     d = DepotSQLite(tmp_path / "legi.sqlite")
     d.enregistrer([_article_travail(), _article_civil()])

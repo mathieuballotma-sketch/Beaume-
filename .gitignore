@@ -20,3 +20,4 @@ data/training/
 data/
 *.bak
 *.gguf
+.env

@@ -72,7 +72,7 @@ FIXTURE = Path(__file__).parent.parent / "fixtures" / "articles_test.json"
 
 
 def _depot_vide(tmp_path):
-    depot = DepotSQLite(tmp_path / "legi.sqlite")
+    depot = DepotSQLite(tmp_path / "_db" / "legi.sqlite")
     depot.enregistrer(SourceFichierLocal(FIXTURE).charger())
     return depot
 
@@ -102,7 +102,7 @@ def test_extraire_json_invalide():
         _extraire_json("pas de json ici")
 
 
-def test_parse_analyse_complet():
+def test_parse_analyse_complet(tmp_path):
     brut = {
         "contexte": "Un salarie a ete licencie.",
         "parties": ["M. Dupont", "SARL Exemple"],
@@ -110,33 +110,44 @@ def test_parse_analyse_complet():
         "problemes_juridiques": ["Licenciement sans cause reelle"],
         "citations": [
             {
-                "code": "code_travail",
-                "numero": "L. 1232-1",
-                "extrait": "Tout licenciement pour motif personnel...",
+                "article_id": "LEGIARTI000006900898",
+                "fichier": "lettre.pdf",
+                "pages": [1],
             }
         ],
     }
-    a = _parse_analyse(brut, date(2024, 1, 1))
+    a = _parse_analyse(
+        brut,
+        date(2024, 1, 1),
+        _depot_vide(tmp_path),
+        {"LEGIARTI000006900898"},
+    )
     assert a.contexte.startswith("Un salarie")
     assert len(a.citations) == 1
-    assert a.citations[0].numero == "L. 1232-1"
+    assert a.citations[0].numero == "L1234-1"
+    assert a.citations[0].extrait.startswith("Le contrat de travail")
     assert a.date_reference == date(2024, 1, 1)
 
 
-def test_parse_analyse_citation_code_invalide_ignoree():
+def test_parse_analyse_citation_hors_candidats_ignoree(tmp_path):
     brut = {
         "contexte": "",
         "citations": [
-            {"code": "code_inexistant", "numero": "X"},
-            {"code": "code_travail", "numero": "L. 1232-1"},
+            {
+                "article_id": "LEGIARTI000006900898",
+                "fichier": "lettre.pdf",
+                "pages": [1],
+            },
         ],
     }
-    a = _parse_analyse(brut, date(2024, 1, 1))
-    assert len(a.citations) == 1
+    a = _parse_analyse(brut, date(2024, 1, 1), _depot_vide(tmp_path), set())
+    assert a.citations == []
+    assert a.etat == "PARTIEL"
+    assert a.avertissements
 
 
-def test_parse_analyse_minimal():
-    a = _parse_analyse({}, date(2024, 1, 1))
+def test_parse_analyse_minimal(tmp_path):
+    a = _parse_analyse({}, date(2024, 1, 1), _depot_vide(tmp_path), set())
     assert a.contexte == ""
     assert a.citations == []
     assert a.date_reference == date(2024, 1, 1)
@@ -153,7 +164,11 @@ def test_analyse_dossier_vide(tmp_path):
 def test_analyse_dossier_avec_un_pdf(tmp_path):
     _make_pdf(tmp_path / "lettre.pdf", "Le salarie conteste son licenciement.")
 
-    reponse_json = '{"contexte": "Un salarie conteste son licenciement.", "parties": ["Le salarie"], "demandes": ["Contestation"], "problemes_juridiques": ["Motif"], "citations": []}'
+    reponse_json = (
+        '{"contexte": "Un salarie conteste son licenciement.", '
+        '"parties": ["Le salarie"], "demandes": ["Contestation"], '
+        '"problemes_juridiques": ["Motif"], "citations": []}'
+    )
     gen = FauxGenerateur(reponse_json)
     a = AnalyseDossier(_registre(), FauxChercheur(), gen, _depot_vide(tmp_path))
     resultat = a.analyser(tmp_path, date(2024, 1, 1))
@@ -178,7 +193,7 @@ def test_analyse_dossier_prompt_contient_date(tmp_path):
     a.analyser(tmp_path, date(2024, 6, 15))
     prompt, _ = gen.appels[0]
     assert "2024-06-15" in prompt
-    assert "ARTICLES DISPONIBLES" in prompt
+    assert "ARTICLES CANDIDATS" in prompt
 
 
 def test_analyse_dossier_chercheur_appele_par_chunk(tmp_path):

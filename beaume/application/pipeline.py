@@ -39,11 +39,22 @@ class PipelineAnalyse:
         chemin_sortie: Path | None = None,
     ) -> tuple[Rapport, str]:
         dossier = Path(dossier)
-        log.info("Pipeline : %s au %s", dossier, date_reference)
+        log.info("Pipeline demarre (date de reference=%s)", date_reference)
 
         debut = time.perf_counter()
         analyse = self.analyseur.analyser(dossier, date_reference)
         verifications = self.verificateur.verifier_toutes(analyse.citations)
+        if any(not resultat.est_valide for resultat in verifications):
+            message = (
+                "Au moins une citation n'a pas ete confirmee par le "
+                "verificateur juridique."
+            )
+            if message not in analyse.avertissements:
+                analyse = analyse.model_copy(
+                    update={
+                        "avertissements": (*analyse.avertissements, message)
+                    }
+                )
         duree = time.perf_counter() - debut
 
         rapport = Rapport(
@@ -68,6 +79,6 @@ class PipelineAnalyse:
             chemin_sortie = Path(chemin_sortie)
             chemin_sortie.parent.mkdir(parents=True, exist_ok=True)
             chemin_sortie.write_text(markdown, encoding="utf-8")
-            log.info("Markdown ecrit : %s", chemin_sortie)
+            log.info("Rapport Markdown ecrit")
 
         return rapport, markdown

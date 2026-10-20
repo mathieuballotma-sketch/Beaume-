@@ -14,15 +14,25 @@ Constats du 2026-10-16 sur dossier_gros_001 :
 - "pages" doit etre un enum des pages REELLES : avec un simple
   "type: integer", Qwen invente "1234", "5678", etc. en concatenant
   des numeros.
+
+Refonte du 2026-10-19 : sur les cinq dossiers du bench, le modele
+choisissait le bon article mais recopiait un extrait qui n'existait
+pas dans le texte officiel (statut texte_different). On ne demande
+plus au modele de recopier le texte de loi. Il selectionne un
+article_id parmi les candidats fournis, et l'application hydrate
+l'extrait depuis SQLite. Voir analyse_dossier._hydrater_citation.
 """
 from __future__ import annotations
 
 import copy
 from typing import Any
 
-from beaume.legal.model import CodeJuridique
 
-_CODES_VALIDES: list[str] = [c.value for c in CodeJuridique]
+# Sentinelle utilisee quand aucun article n'est disponible. Elle ne
+# doit jamais apparaitre dans une Citation retournee : analyse_dossier
+# la rejette. Elle existe uniquement pour que le schema Ollama reste
+# syntaxiquement valide (un enum vide n'est pas acceptable).
+_SENTINELLE_AUCUN_ARTICLE = "__AUCUN__"
 
 
 SCHEMA_ANALYSE: dict[str, Any] = {
@@ -40,19 +50,17 @@ SCHEMA_ANALYSE: dict[str, Any] = {
             "items": {
                 "type": "object",
                 "properties": {
-                    "code": {
+                    "article_id": {
                         "type": "string",
-                        "enum": _CODES_VALIDES,
+                        "enum": [_SENTINELLE_AUCUN_ARTICLE],
                     },
-                    "numero": {"type": "string"},
-                    "extrait": {"type": "string"},
+                    "fichier": {"type": "string"},
                     "pages": {
                         "type": "array",
                         "items": {"type": "integer"},
                     },
-                    "fichier": {"type": "string"},
                 },
-                "required": ["code", "numero"],
+                "required": ["article_id"],
             },
         },
     },
@@ -60,32 +68,59 @@ SCHEMA_ANALYSE: dict[str, Any] = {
 }
 
 
-def schema_analyse_avec_fichiers(
+def schema_analyse_avec_candidats(
+    article_ids: tuple[str, ...],
     fichiers: tuple[str, ...],
     pages_max: int = 1,
 ) -> dict[str, Any]:
-    """Retourne une copie de SCHEMA_ANALYSE avec "fichier" enumere.
+    """Retourne une copie de SCHEMA_ANALYSE configuree pour ce dossier.
 
-    - "fichier" : enum des vrais noms, sans "".
-    - "pages" : enum des pages disponibles (1..pages_max), minItems 1.
+    - "article_id" : enum des article_id candidats. Si la liste est
+      vide, l'enum contient uniquement la sentinelle __AUCUN__.
+    - "fichier" : enum des vrais noms de fichiers, sans "".
+    - "pages" : enum des pages disponibles (1..pages_max), minItems 1,
+      maxItems 5, uniqueItems.
 
-    Si aucun fichier n'est fourni, on retourne SCHEMA_ANALYSE tel quel.
+    Si aucun fichier n'est fourni, "fichier" et "pages" restent au
+    type libre et ne sont pas requis. Cette situation ne devrait pas
+    arriver en pipeline nominal (tout dossier a au moins un PDF lu).
     """
     schema = copy.deepcopy(SCHEMA_ANALYSE)
-    if not fichiers:
-        return schema
-
-    pages_valides = list(range(1, max(1, pages_max) + 1))
-
     item = schema["properties"]["citations"]["items"]
-    item["properties"]["fichier"] = {
-        "type": "string",
-        "enum": list(fichiers),
-    }
-    item["properties"]["pages"] = {
-        "type": "array",
-        "items": {"type": "integer", "enum": pages_valides},
-        "minItems": 1,
-    }
-    item["required"] = ["code", "numero", "fichier", "pages"]
+
+    ids_effectifs = list(article_ids) if article_ids else [_SENTINELLE_AUCUN_ARTICLE]
+    item["properties"]["article_id"]["enum"] = ids_effectifs
+
+    if fichiers:
+        pages_valides = list(range(1, max(1, pages_max) + 1))
+        item["properties"]["fichier"] = {
+            "type": "string",
+            "enum": list(fichiers),
+        }
+        item["properties"]["pages"] = {
+            "type": "array",
+            "items": {"type": "integer", "enum": pages_valides},
+            "minItems": 1,
+            "maxItems": 5,
+            "uniqueItems": True,
+        }
+        item["required"] = ["article_id", "fichier", "pages"]
+
     return schema
+
+
+# Compatibilite descendante : certains tests et modules importent
+# l'ancien nom. Le nouveau nom est explicite sur la presence d'une
+# liste de candidats. L'ancien nom est conserve pour ne pas casser
+# les imports existants, mais il delegue au nouveau avec une liste
+# vide (schema sans enum d'article_id valide).
+def schema_analyse_avec_fichiers(
+    fichiers: tuple[str, ...],
+    pages_max: int = 1,
+    article_ids: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    return schema_analyse_avec_candidats(
+        article_ids=article_ids,
+        fichiers=fichiers,
+        pages_max=pages_max,
+    )
