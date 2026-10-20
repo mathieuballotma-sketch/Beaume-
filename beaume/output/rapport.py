@@ -7,6 +7,9 @@ from beaume.legal.analyse import Analyse
 from beaume.legal.model import ResultatVerification
 
 
+_PREFIXE_SOURCE_DILA = "DILA-LEGI:"
+
+
 @dataclass(frozen=True)
 class Rapport:
     dossier: Path
@@ -25,8 +28,25 @@ class Rapport:
         return [v for v in self.verifications if not v.est_valide]
 
 
-def _lien_legifrance(article_id: str) -> str:
-    return f"https://www.legifrance.gouv.fr/codes/article_lc/{article_id}"
+def _legiarti_version(version) -> str:
+    """Retourne le LEGIARTI propre à la version, pour construire l'URL.
+
+    `version.article_id` est le famille_id (partagé par toutes les
+    versions d'un article). Pour pointer vers la version exacte sur
+    Légifrance, on utilise le LEGIARTI de version conservé dans
+    `version.source` au format `DILA-LEGI:LEGIARTI...`.
+
+    Fallback sur `version.article_id` si `source` n'est pas au format
+    attendu (citations construites à la main, tests unitaires).
+    """
+    source = version.source or ""
+    if source.startswith(_PREFIXE_SOURCE_DILA):
+        return source[len(_PREFIXE_SOURCE_DILA):]
+    return version.article_id.valeur
+
+
+def _lien_legifrance(legiarti: str) -> str:
+    return f"https://www.legifrance.gouv.fr/codes/article_lc/{legiarti}"
 
 
 def _tronquer(texte: str, longueur: int = 300) -> str:
@@ -58,11 +78,12 @@ def _formater_verification(v: ResultatVerification) -> str:
     if source:
         lignes.append(source)
     if v.version:
+        legiarti = _legiarti_version(v.version)
         lignes.append(
-            f"- **Identifiant Legifrance** : `{v.version.article_id.valeur}`"
+            f"- **Identifiant Legifrance** : `{legiarti}`"
         )
         lignes.append(
-            f"- **Lien** : {_lien_legifrance(v.version.article_id.valeur)}"
+            f"- **Lien** : {_lien_legifrance(legiarti)}"
         )
     if c.extrait:
         lignes.append(f"- **Extrait cite** : *{c.extrait}*")
@@ -77,7 +98,8 @@ def _formater_rejet(v: ResultatVerification) -> str:
     """Formate une citation rejetee avec sa provenance."""
     c = v.citation
     lignes = [
-        f"### {c.code.value} - Article {c.numero} (au {c.date_reference.isoformat()})",
+        f"### {c.code.value} - Article {c.numero} "
+        f"(au {c.date_reference.isoformat()})",
         "",
         f"- **Verdict** : `{v.statut.value}`",
         f"- **Raison** : {v.message}",

@@ -8,19 +8,29 @@ Source : vue `versions_articles_sans_conflit_source`, qui exclut les
 identifiants aux copies divergentes. Les textes non codifiés (code NULL)
 sont ignorés : ils ne correspondent à aucun `CodeJuridique` de Beaume.
 
-Correctifs du 2026-10-20 :
+Correctifs du 2026-10-20 (audit d'équipe) :
 
-1. `VersionArticle.article_id` doit être le famille_id (partagé par toutes
-   les versions d'un même article), pas le LEGIARTI propre à chaque
-   version. Sinon `versions.article_id` ne rejoint jamais `articles.id`.
+1. `_score_version` préfère la version OUVERTE (date_fin=None ou
+   sentinelle 2999) en cas de collision date_debut. Avant, la version
+   avec date_fin gagnait, ce qui pouvait écarter une version toujours
+   applicable au profit d'une version fermée.
 
-2. La PRIMARY KEY de `versions` est `(article_id, date_debut)`. Deux
-   LEGIARTI de la même famille peuvent partager une date_debut (renumé-
-   rotation, republication DILA, réutilisation de numéro). On dédoublonne
-   par date_debut, en gardant la version la plus informative.
+2. `_parse_date_fin` retourne (date, valide). Une date de fin invalide
+   (ex: "inconnue") force le statut INCONNU au lieu de le laisser
+   passer en EN_VIGUEUR éternel.
+
+3. `trouver_par_numero` groupe par article_famille_id. Si plusieurs
+   familles partagent le même numéro, retourne None avec warning
+   (ne pas deviner). Un paramètre `article_famille_id` permet de
+   cibler une famille précise.
+
+4. `iter_articles` ne met plus de LIMIT SQL (qui coupait au milieu
+   d'un article). On charge tout, groupe en Python, puis coupe à
+   `limite` articles complets.
 
 Le LEGIARTI propre à chaque version est conservé dans `source`, pour
-permettre de remonter au XML DILA original.
+permettre de remonter au XML DILA original. Le rendu doit utiliser
+`source` (et non `article_id`) pour construire les liens Légifrance.
 
 Licence : DILA — Légifrance, base LEGI, Licence Ouverte 2.0.
 Attribution obligatoire dans toute sortie.
@@ -103,6 +113,11 @@ def _map_statut(statut_dila: str, date_debut: date) -> StatutVersion:
 
 
 def _parse_date_debut(valeur: str | None) -> date | None:
+    """Parse une date de début DILA.
+
+    Les sentinelles 2999-01-01 et 2222-02-22 sont conservées comme dates
+    réelles, pour que est_en_vigueur_a() retourne False aux dates usuelles.
+    """
     if not valeur:
         return None
     try:
@@ -111,28 +126,39 @@ def _parse_date_debut(valeur: str | None) -> date | None:
         return None
 
 
-def _parse_date_fin(valeur: str | None) -> date | None:
+def _parse_date_fin(valeur: str | None) -> tuple[date | None, bool]:
+    """Parse une date de fin DILA.
+
+    Retourne (date_fin, valide) :
+    - (None, True)  si pas de date (version ouverte)
+    - (date, True)  si date valide
+    - (None, False) si date invalide (à traiter comme INCONNU, pas EN_VIGUEUR)
+
+    Une date invalide ne prouve pas que la version est ouverte.
+    """
     if not valeur:
-        return None
+        return None, True
     if valeur in _SENTINELLES_DATE:
-        return None
+        return None, True
     try:
-        return date.fromisoformat(valeur)
+        return date.fromisoformat(valeur), True
     except (TypeError, ValueError):
-        return None
+        return None, False
 
 
 def _score_version(row: sqlite3.Row) -> tuple[int, int, str]:
     """Score de préférence pour départager deux versions à date_debut égale.
 
-    Priorité :
-    1. date_fin renseignée (plus d'information sur la période)
+    Priorité (du plus important au moins important) :
+    1. version OUVERTE (pas de date_fin, ou sentinelle 2999) : une version
+       qui continue est plus informative qu'une version qui s'arrête
     2. texte non vide (version documentée)
-    3. LEGIARTI le plus grand (version la plus récente)
+    3. LEGIARTI le plus récent
     """
-    a_date_fin = 1 if row["date_fin"] else 0
+    date_fin = row["date_fin"]
+    est_ouverte = 1 if (not date_fin or date_fin in _SENTINELLES_DATE) else 0
     a_texte = 1 if (row["texte"] or "").strip() else 0
-    return (a_date_fin, a_texte, row["article_id"] or "")
+    return (est_ouverte, a_texte, row["article_id"] or "")
 
 
 class SourceDila:
@@ -145,6 +171,7 @@ class SourceDila:
         self.filtrer_conflits = filtrer_conflits
         self._conn: sqlite3.Connection | None = None
         self.versions_dedupliquees = 0
+        self.versions_date_fin_invalide = 0
 
     def _connexion(self) -> sqlite3.Connection:
         if self._conn is None:
@@ -172,6 +199,7 @@ class SourceDila:
         )
 
     def compter(self, codes: tuple[str, ...] | None = None) -> int:
+        """Compte les versions (filtrées par code DILA si fourni)."""
         conn = self._connexion()
         vue = self._vue()
         if codes:
@@ -182,24 +210,73 @@ class SourceDila:
             (n,) = conn.execute(f"SELECT COUNT(*) FROM {vue}").fetchone()
         return int(n)
 
-    def trouver_par_numero(self, numero: str, code_dila: str) -> Article | None:
+    def trouver_par_numero(
+        self,
+        numero: str,
+        code_dila: str,
+        article_famille_id: str | None = None,
+    ) -> Article | None:
+        """Retourne un Article par numéro + code DILA, ou None.
+
+        Si `article_famille_id` est fourni, cible cette famille précise.
+        Sinon :
+        - 0 famille trouvée : retourne None
+        - 1 famille : retourne l'article
+        - >1 familles : retourne None avec warning (ne pas deviner)
+
+        Pour lever l'ambiguïté sur un numéro réutilisé (renumérotation,
+        republication), passer `article_famille_id` explicitement.
+        """
         conn = self._connexion()
         vue = self._vue()
+
+        conditions = ["numero = ?", "code = ?"]
+        params: list[str] = [numero, code_dila]
+        if article_famille_id:
+            conditions.append("COALESCE(article_famille_id, article_id) = ?")
+            params.append(article_famille_id)
+
+        clause_where = " AND ".join(conditions)
         requete = (
             f"SELECT article_id, code, numero, date_debut, date_fin, statut, "
             f"texte, article_famille_id FROM {vue} "
-            f"WHERE numero = ? AND code = ? ORDER BY date_debut"
+            f"WHERE {clause_where} ORDER BY date_debut"
         )
-        rows = conn.execute(requete, (numero, code_dila)).fetchall()
+        rows = conn.execute(requete, params).fetchall()
         if not rows:
             return None
-        return self._construire_article(list(rows))
+
+        familles: dict[str, list[sqlite3.Row]] = defaultdict(list)
+        for row in rows:
+            cle = row["article_famille_id"] or row["article_id"]
+            familles[cle].append(row)
+
+        if article_famille_id:
+            if article_famille_id not in familles:
+                return None
+            return self._construire_article(familles[article_famille_id])
+
+        if len(familles) > 1:
+            log.warning(
+                "trouver_par_numero(%r, %r) : %d familles distinctes (%s). "
+                "Ambigu, retourne None. Utiliser article_famille_id.",
+                numero, code_dila, len(familles), list(familles.keys()),
+            )
+            return None
+
+        return self._construire_article(list(familles.values())[0])
 
     def iter_articles(
         self,
         codes: tuple[str, ...] | None = None,
         limite: int | None = None,
     ) -> Iterator[Article]:
+        """Itère les `Article` complets, avec toutes leurs versions.
+
+        Pas de LIMIT SQL : on charge tout, on groupe en Python, puis on
+        coupe à `limite` articles complets. Un LIMIT SQL couperait au
+        milieu d'un article multi-version et perdrait des versions.
+        """
         conn = self._connexion()
         vue = self._vue()
 
@@ -215,8 +292,6 @@ class SourceDila:
             f"SELECT article_id, code, numero, date_debut, date_fin, statut, "
             f"texte, article_famille_id FROM {vue} WHERE {clause_where}"
         )
-        if limite is not None:
-            requete += f" LIMIT {limite * 5}"
 
         groupes: dict[str, list[sqlite3.Row]] = defaultdict(list)
         for row in conn.execute(requete, params):
@@ -248,24 +323,24 @@ class SourceDila:
         # peuvent partager une date_debut.
         par_date: dict[str, sqlite3.Row] = {}
         for row in rows:
-            date = row["date_debut"] or ""
-            existant = par_date.get(date)
+            date_str = row["date_debut"] or ""
+            existant = par_date.get(date_str)
             if existant is None:
-                par_date[date] = row
+                par_date[date_str] = row
                 continue
             if _score_version(row) > _score_version(existant):
                 log.warning(
                     "Article %s : collision date_debut=%s, LEGIARTI %s "
                     "remplace %s",
-                    article_id_famille, date,
+                    article_id_famille, date_str,
                     row["article_id"], existant["article_id"],
                 )
-                par_date[date] = row
+                par_date[date_str] = row
             else:
                 log.warning(
                     "Article %s : collision date_debut=%s, LEGIARTI %s "
                     "ignoré (garde %s)",
-                    article_id_famille, date,
+                    article_id_famille, date_str,
                     row["article_id"], existant["article_id"],
                 )
             self.versions_dedupliquees += 1
@@ -281,8 +356,21 @@ class SourceDila:
                     row["article_id"], row["date_debut"],
                 )
                 continue
-            date_fin = _parse_date_fin(row["date_fin"])
-            statut = _map_statut(row["statut"] or "", date_debut)
+
+            date_fin, date_fin_valide = _parse_date_fin(row["date_fin"])
+
+            if not date_fin_valide:
+                # Date de fin invalide : ne pas laisser passer en EN_VIGUEUR.
+                # Marquer INCONNU pour que le vérificateur rejette.
+                self.versions_date_fin_invalide += 1
+                log.warning(
+                    "Version %s : date_fin invalide (%r), statut forcé INCONNU",
+                    row["article_id"], row["date_fin"],
+                )
+                statut = StatutVersion.INCONNU
+            else:
+                statut = _map_statut(row["statut"] or "", date_debut)
+
             versions.append(
                 VersionArticle(
                     article_id=IdentifiantLegifrance(valeur=article_id_famille),
