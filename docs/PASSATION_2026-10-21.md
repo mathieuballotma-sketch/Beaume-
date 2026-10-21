@@ -396,3 +396,80 @@ Lots produits :
   100 premières décisions, artefact historique)
 - `data/jurisprudence/citations_candidates_random.jsonl` (50 lignes,
   234 citations, tirage aléatoire)
+
+---
+
+## 9. Addendum — mesure des visas textuels (2026-10-21)
+
+Cette section documente la mesure A proposée après la pré-revue IA.
+Elle répond à la question : « la chaîne C rate-t-elle des visas
+présents dans le texte mais absents des candidats ? »
+
+### Méthode
+
+Script `mesure_visas.py` (nouveau). Sur les 10 décisions post-2010 de
+l'échantillon (tirage `--shuffle --seed 42`), il cherche les patterns
+de visa — `Vu l'article X`, `Vu les articles X et Y`, `aux termes de
+l'article X`, `sur le fondement de l'article X` — avec une regex
+large. Chaque fragment est passé à `parser_reference` puis
+`resoudre_reference`, et comparé aux candidats existants de
+`citations_candidates_random.jsonl` au niveau `(code, numero)`.
+
+### Résultats
+
+Première mesure : 99 fragments, 31 parsés, 31 résolus, 0 nouveau.
+Un diagnostic (`diagnostic_visas.py`) a montré que 66 fragments
+étaient rejetés en `code_absent_ou_multiple` : la regex tronquait
+`code de procédure civile` en `code de`. Le parser ne reconnaissait
+pas le code, donc rejetait le visa.
+
+Après correction de la regex (codes complets, alinéas tolérés) :
+90 fragments, 75 parsés, 74 résolus, **0 nouveau**.
+
+### Interprétation — visa vs moyen
+
+Le `0` ne contredit pas la pré-revue IA. Il répond à une autre
+question. La pré-revue IA identifie des **rôles** manquants : dans
+C301029, « Vu l'article 783, alinéa 1er, du code de procédure
+civile » au début de l'arrêt (rôle : visa de cassation). Le
+`(code_procedure_civile, 783)` est déjà dans les candidats, mais à
+un autre offset (dans le moyen).
+
+Autrement dit :
+
+- **Au niveau article** : la chaîne C capture tous les articles,
+  y compris ceux cités en visa.
+- **Au niveau rôle** : elle ne distingue pas visa et moyen. Tous
+  les candidats ont la même étiquette `citation_candidate`, sans
+  indication de leur fonction dans l'arrêt.
+
+### Décision
+
+**Pas de construction d'une chaîne « visas textuels » séparée.**
+Ajouter l'annotation de rôle « visa » (identifié par `Vu l'article X`
+en début d'arrêt) est possible, mais n'apporte aucun article
+nouveau. C'est une annotation sémantique, pas une extension du
+plafond.
+
+L'annotation de rôle est reportée à une revue humaine, conformément
+à la recommandation de la pré-revue IA : « deux annotations séparées
+— rôle et pertinence — à réaliser avec le relecteur humain ».
+
+### Limites
+
+- **Échantillon de 10 décisions** (post-2010, tirage aléatoire). Non
+  représentatif de l'ensemble du corpus.
+- **Regex de visa approximatives.** Les patterns `Vu l'article X` et
+  variantes ne couvrent pas toutes les formes possibles. Certains
+  visas peuvent être manqués si la formulation est inhabituelle.
+- **Faux positifs possibles.** Un `Vu l'article X` dans un moyen
+  (pas dans le visa) est capturé comme visa. Le script ne distingue
+  pas la position dans l'arrêt.
+- **Code implicite.** Certains visas ne citent pas le code (« Vu
+  l'article 1382 »). Ces formes ne sont pas résolubles par la
+  chaîne actuelle et ne sont pas dans le décompte.
+
+### Fichiers ajoutés
+
+- `scripts/mesure_visas.py` (diagnostic, post-patch regex)
+- `scripts/diagnostic_visas.py` (diagnostic des motifs de rejet)
