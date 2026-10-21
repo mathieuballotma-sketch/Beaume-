@@ -473,3 +473,71 @@ L'annotation de rôle est reportée à une revue humaine, conformément
 
 - `scripts/mesure_visas.py` (diagnostic, post-patch regex)
 - `scripts/diagnostic_visas.py` (diagnostic des motifs de rejet)
+
+---
+
+## 10. Addendum — vigueur des citations en 2026 (2026-10-21)
+
+Cette section mesure : « la version citée est-elle encore en vigueur
+le 21 octobre 2026 ? » Ce n'est PAS la même question que « la
+résolution est-elle correcte à la date des faits ? ».
+
+### Chiffres bruts
+
+Sur les 234 citations du lot aléatoire :
+- 234 articles famille existent dans `legi_full_v3`
+- 226 ont une version applicable en 2026 (8 non, articles abrogés sans remplacement)
+- 71 pointent vers la version encore en vigueur en 2026 (30,3 %)
+- 163 pointent vers une version modifiée depuis
+
+Distribution par décennie de la décision :
+
+| Décennie | Vigueur 2026 | Total | % |
+|---|---:|---:|---:|
+| 1980s | 1 | 7 | 14 % |
+| 1990s | 1 | 19 | 5 % |
+| 2000s | 3 | 21 | 14 % |
+| 2010s | 59 | 177 | 33 % |
+| 2020s | 7 | 10 | 70 % |
+
+### Pourquoi ce n'est pas un défaut de la chaîne C
+
+Beaume résout les citations à la **date de la décision** (et non à
+la date d'aujourd'hui). Un arrêt de 1990 qui cite le L122-14-3 tel
+qu'il existait en 1990 est correctement résolu à cette date. La
+version citée a changé depuis (renumérotation du Code du travail en
+2008), mais c'est un fait historique, pas une erreur de résolution.
+
+Autrement dit : les 234 citations sont correctes pour leur date. La
+question « sont-elles encore valides en 2026 » est une autre
+question, qui dépend de l'usage.
+
+### Deux usages, deux conclusions
+
+**Usage 1 — entraînement sur le droit applicable à la date des faits.**
+C'est l'usage actuel de Beaume (le pipeline vérifie
+`version_a(date)`). Les 234 citations sont utilisables. Le taux de
+vigueur en 2026 n'est pas pertinent.
+
+**Usage 2 — modèle qui répond sur le droit actuel.** Les 234
+citations se réduisent à :
+- 71 directement utilisables (30,3 %)
+- 7 seulement si on se limite aux décisions 2020s (3 % du corpus)
+
+**Le corpus est trop mince en décisions 2020s** pour un entraînement
+moderne sur le droit actuel. 10 décisions sur 100 dans le tirage
+aléatoire, soit 7 citations valides. Ce n'est pas exploitable en
+volume.
+
+### Décision
+
+**Pas de filtre de vigueur ajouté à la chaîne C.** La résolution à
+la date de décision est le comportement voulu. Si l'objectif devient
+de citer le droit actuel, un filtre explicite `date_decision >= 2020`
+sera nécessaire, avec la conscience qu'il ne produit que 7 citations
+sur 234.
+
+### Fichiers ajoutés
+
+- `scripts/mesure_vigueur.py` (mesure globale)
+- `scripts/mesure_vigueur_par_decennie.py` (mesure par décennie)
