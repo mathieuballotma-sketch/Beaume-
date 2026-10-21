@@ -406,13 +406,18 @@ class DepotSQLite:
                 statut=StatutResolution.DONNEES_INCOHERENTES,
                 message="date_reference_invalide",
             )
-        try:
-            code_valeur = code.value
-        except AttributeError:
-            return ResolutionArticle(
-                statut=StatutResolution.DONNEES_INCOHERENTES,
-                message="code_invalide",
-            )
+        # Accepter CodeJuridique (enum) ou str (ex: "code_civil").
+        # resoudre_reference passe une chaine issue du parser ; les
+        # tests unitaires passent l'enum. Les deux doivent fonctionner.
+        if not isinstance(code, CodeJuridique):
+            try:
+                code = CodeJuridique(code)
+            except (ValueError, TypeError):
+                return ResolutionArticle(
+                    statut=StatutResolution.DONNEES_INCOHERENTES,
+                    message=f"code_inconnu:{code!r}",
+                )
+        code_valeur = code.value
 
         iso = date_reference.isoformat()
 

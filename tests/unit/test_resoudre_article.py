@@ -333,8 +333,15 @@ def test_numero_vide_donnees_incoherentes(tmp_path):
 
 
 def test_code_invalide_donnees_incoherentes(tmp_path):
+    """Un code qui n'existe pas dans l'enum CodeJuridique est rejete.
+
+    Note (2026-10-21) : depuis l'acceptation des chaines dans
+    resoudre_article (compatibilite avec resoudre_reference), une
+    chaine "code_travail" n'est PLUS invalide — c'est un code enum
+    valide. Ce test couvre donc un code reellement inconnu.
+    """
     dep = _depot(tmp_path)
-    r = dep.resoudre_article("code_travail", "L1233-3", date(2012, 1, 1))
+    r = dep.resoudre_article("code_bidon", "L1233-3", date(2012, 1, 1))
     assert r.statut == StatutResolution.DONNEES_INCOHERENTES
 
 
