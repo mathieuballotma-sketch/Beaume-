@@ -71,12 +71,24 @@ Ce n'est pas un échec. C'est le point de départ.
 
 ### Visée 1 — Aucune donnée client ne quitte la machine
 
-**Mesure :** audit réseau sur 10 dossiers réels (tcpdump). Vérifier
-qu'aucun paquet sortant ne contient de chaîne issue du dossier.
+**Périmètre précisé le 21 octobre 2026 :** analyse avec Ollama exécuté localement.
+Les scripts de préparation de l'entraînement peuvent appeler Groq uniquement
+sur des données publiques ou synthétiques autorisées à cet usage, sans pièce
+client. Le script de réécriture privilégie Ollama et demande une confirmation
+explicite avant Groq. Cette déclaration ne vérifie pas le contenu des entrées.
 
-**Seuil cible :** 0 occurrence sur 10 dossiers.
+**Mesure prévue :** commencer par des dossiers synthétiques avec marqueurs
+de contrôle ; inventorier les processus, destinations et configurations réseau,
+puis observer les connexions lors de l'analyse et de ses chemins d'erreur.
+Tester également l'exécution hors ligne après installation des ressources.
+Ne pas employer de vrais dossiers pour le premier audit.
 
-**Statut :** non mesuré.
+**Critère visé :** aucune connexion externe inattendue pendant l'analyse dans
+la configuration testée. L'absence de texte lisible dans une capture réseau
+ne suffit pas : les échanges peuvent être chiffrés. Documenter la configuration,
+les scénarios et les limites ; ne pas extrapoler une garantie universelle.
+
+**Statut :** non mesuré. Voir aussi le [protocole de validation](VALIDATION_JURIDIQUE.md).
 
 ---
 

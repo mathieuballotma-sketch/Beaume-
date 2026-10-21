@@ -1,8 +1,30 @@
 # Beaume
 
-Assistant juridique 100% local pour avocats francais.
+Assistant juridique pour avocats francais, concu pour l'analyse locale des dossiers.
 
-Promesse : aucune donnee client ne quitte votre machine. Jamais.
+L'analyse des dossiers clients est concue pour fonctionner localement, avec
+Ollama execute sur votre machine. Les documents clients sont exclus des
+traitements externes de preparation des donnees d'entrainement.
+
+### Confidentialite : perimetre et limites
+
+- Analyse : utiliser une instance Ollama locale et des modeles executes
+  localement. La configuration effective et les flux reseau restent a auditer ;
+  le prototype ne constitue pas une garantie d'absence de fuite.
+- Entrainement : certains scripts de preparation peuvent utiliser Groq,
+  exclusivement pour des donnees publiques ou synthetiques autorisees a cet usage.
+  Une publication publique ne dispense pas de verifier les donnees personnelles
+  residuelles et les conditions de reutilisation.
+- `scripts/reecrire_faits.py` utilise Ollama par defaut. Groq exige les options
+  `--fournisseur groq --confirmer-donnees-publiques-ou-synthetiques`.
+  Cette confirmation est declarative : elle ne detecte pas les documents clients.
+- Le script enregistre le fournisseur, le modele, l'empreinte du fichier source
+  et la declaration dans chaque nouvelle sortie. Il ne verifie pas la pertinence
+  juridique des exemples. Les anciennes sorties ne sont pas modifiees.
+
+Les telechargements de corpus et de modeles sont distincts de l'analyse des
+pieces. Ne pas placer de documents clients dans les entrees des scripts
+d'entrainement, meme lors d'une execution locale.
 
 ---
 
@@ -36,6 +58,7 @@ juridique du moteur ni les labels synthetiques d'entrainement.
 | docs/TESTS_JOURNAL.md | Toutes les commandes de test lancees, avec sorties brutes |
 | docs/LLM_EVOLUTION.md | Evolution des prompts et du comportement du LLM |
 | docs/JOURNAL.md | Chronologie du projet |
+| [docs/VALIDATION_JURIDIQUE.md](docs/VALIDATION_JURIDIQUE.md) | Protocole de revue humaine, partitions et limites des mesures |
 
 ---
 
@@ -133,4 +156,12 @@ Regle d'extension : ajouter une fonctionnalite = 1 fichier + 1 test
 
 ## Licence
 
-A definir. Usage commercial sur accord.
+La licence du code n'est pas encore choisie par le porteur du projet.
+Aucun fichier de licence du code n'est actuellement fourni. Les conditions
+d'utilisation, de modification et de redistribution doivent etre clarifiees
+avant diffusion sous une licence annoncee ou commercialisation.
+
+Les licences des donnees et des modeles sont a inventorier separement, avec
+leurs obligations d'attribution et de redistribution. L'abonnement envisage
+dans la roadmap ne definit pas la licence du code. Le choix reste ouvert ;
+cette section n'attribue pas une nouvelle licence au projet.

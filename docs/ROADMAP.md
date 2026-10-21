@@ -3,7 +3,7 @@
 Ce document regroupe les idées, l'architecture cible et les étapes de construction de Beaume. Il doit être mis à jour à chaque avancée majeure ou nouvelle idée validée.
 
 ## 🎯 1. Philosophie & Contraintes (Non négociables)
-- **100% Local & Confidentiel** : Aucune donnée client ne quitte le Mac de l'avocat. Le secret professionnel est la priorité absolue.
+- **Analyse locale et confidentialité** : Objectif : traiter les dossiers sur la machine de l'avocat, avec Ollama local. L'absence de fuite reste à vérifier par un audit de configuration et de flux. Les scripts de préparation peuvent utiliser un service externe uniquement pour des données publiques ou synthétiques autorisées à cet usage, sans document client. Voir le périmètre dans le [README](../README.md).
 - **Frugalité** : Zéro coût d'infrastructure. Utilisation d'outils gratuits (Ollama, Kaggle, Python, SQLite) et du matériel existant (Mac M4 24Go).
 - **Traçabilité stricte** : Le modèle ne doit jamais inventer de source. Chaque citation doit pointer vers un fichier, une page et un texte exact.
 - **Transparence Radicale** : L'avocat doit savoir où va son argent. Pas de boîte noire financière.
@@ -15,6 +15,11 @@ Ce document regroupe les idées, l'architecture cible et les étapes de construc
 - **Le Serveur de Licence (P2P Check)** : Un serveur ultra-léger qui gère uniquement les abonnements (Oui/Non), totalement déconnecté des données clients.
 
 ## 💳 3. Modèle Économique & Licence (Le Pacte de Confiance)
+
+Les mécanismes ci-dessous sont des objectifs produit. La licence du code reste
+à choisir par Mathieu ; un abonnement ne définit pas les droits sur le code.
+Les licences des corpus et modèles doivent être recensées séparément.
+
 - **Paiement Direct (P2P)** : L'avocat paie un abonnement abordable. Le serveur de licence valide le paiement sans jamais voir les dossiers.
 - **Validation "Aveugle"** : Le Mac envoie juste un identifiant machine. Le serveur répond `{"status": "active"}`.
 - **Période de Grâce (Offline)** : Licence valide 30 jours. Si l'avocat est hors-ligne (tribunal, panne), il a 10 jours supplémentaires de tolérance avant blocage de l'outil.
@@ -56,6 +61,7 @@ Ce document regroupe les idées, l'architecture cible et les étapes de construc
 - [ ] Création du Dashboard de transparence financière.
 - [ ] Déploiement de la boîte à idées et des sondages pour les avocats.
 - [ ] Présentation du prototype aux réseaux (Open Law, AvoTech) et tests réels.
+- [ ] Revue juridique suivant le [protocole](VALIDATION_JURIDIQUE.md), avec jeu de développement et test final séparés.
 
 ## 💡 6. Le Backlog (Boîte à idées techniques)
 

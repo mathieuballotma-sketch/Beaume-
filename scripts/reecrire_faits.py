@@ -2,12 +2,16 @@
 
 Fournisseurs supportes :
 - groq   : API Groq (rapide, quota journalier limite)
-- ollama : Ollama local (lent, aucun quota, donnees locales)
+- ollama : Ollama local (fournisseur par defaut)
+
+Reserve aux donnees publiques ou synthetiques, jamais aux dossiers clients.
+L'option de confirmation pour Groq est declarative, pas un audit du contenu.
 
 Usage :
     PYTHONPATH=. python scripts/reecrire_faits.py --n 1000 --graine 43 \\
         --sortie data/training/faits_clients_2.jsonl \\
-        --modele openai/gpt-oss-20b --fournisseur groq
+        --modele openai/gpt-oss-20b --fournisseur groq \\
+        --confirmer-donnees-publiques-ou-synthetiques
 
     PYTHONPATH=. python scripts/reecrire_faits.py --n 1000 --graine 44 \\
         --sortie data/training/faits_clients_3.jsonl \\
@@ -16,6 +20,7 @@ Usage :
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -207,7 +212,7 @@ def _reecrire(client, faits: str, modele: str,
                 continue
             return texte
         except Exception as e:
-            log.warning("Erreur tentative %d : %s", tentative + 1, e)
+            log.warning("Erreur tentative %d : %s", tentative + 1, type(e).__name__)
             time.sleep(2 ** tentative)
     return None
 
@@ -217,20 +222,34 @@ def main() -> int:
     parser.add_argument("--n", type=int, default=100)
     parser.add_argument("--graine", type=int, default=42)
     parser.add_argument("--sortie", type=Path, default=CHEMIN_SORTIE)
-    parser.add_argument("--fournisseur", type=str, default="groq",
+    parser.add_argument("--fournisseur", type=str, default="ollama",
                         choices=["groq", "ollama"])
+    parser.add_argument(
+        "--confirmer-donnees-publiques-ou-synthetiques", action="store_true",
+        help="Declaration obligatoire pour Groq : sources publiques ou synthetiques "
+             "autorisees a cet usage, sans document client. Ne verifie pas le contenu.",
+    )
     parser.add_argument("--modele", type=str, default=None)
     args = parser.parse_args()
+
+    if (args.fournisseur == "groq"
+            and not args.confirmer_donnees_publiques_ou_synthetiques):
+        parser.error("Groq transmet les faits a un service externe. Confirmez "
+                     "leur origine avec --confirmer-donnees-publiques-ou-synthetiques. "
+                     "Les documents clients sont interdits.")
 
     if args.modele is None:
         args.modele = (MODELE_GROQ if args.fournisseur == "groq"
                        else MODELE_OLLAMA)
 
-    env = _charger_env()
+    env = _charger_env() if args.fournisseur == "groq" else {}
     client = _creer_client(args.fournisseur, env)
 
     if not CHEMIN_PAIRES.exists():
         raise SystemExit(f"Introuvable : {CHEMIN_PAIRES}")
+
+    with CHEMIN_PAIRES.open("rb") as source:
+        source_sha256 = hashlib.file_digest(source, "sha256").hexdigest()
 
     paires = _charger_paires(args.n, args.graine)
     deja_traitees = _charger_deja_traitees(args.sortie)
@@ -269,6 +288,15 @@ def main() -> int:
                 "articles": paire["articles"],
                 "faits_juridiques": paire["faits"][:2000],
                 "faits_client": texte_client,
+                "provenance_generation": {
+                    "fournisseur": args.fournisseur,
+                    "modele": args.modele,
+                    "source_fichier": CHEMIN_PAIRES.name,
+                    "source_sha256": source_sha256,
+                    "origine_publique_ou_synthetique_declaree":
+                        args.confirmer_donnees_publiques_ou_synthetiques,
+                    "statut": "genere_auto_non_valide_juridiquement",
+                },
             }
             f_out.write(json.dumps(resultat, ensure_ascii=False) + "\n")
             f_out.flush()
