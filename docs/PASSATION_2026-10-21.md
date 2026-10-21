@@ -21,13 +21,19 @@ désormais succès / succès sans résultat / erreur de collecte. La chaîne
 de données est stabilisée (identifiants déterministes, provenance
 complète, articles positifs préservés).
 
-**Ce qui est mesuré :** sur 100 décisions tirées au hasard
-(`seed=42`) dans `cour_de_cassation`, le plafond de décisions
-acceptées est **0** sur `legi_full_v2.sqlite` (5 codes) comme sur
-`legi_full_v3.sqlite` (10 codes). Le chiffre 9/50 annoncé dans la
-mesure de plafond initiale était un **artefact** d'une regex naïve
-utilisée dans `mesure_plafond_50.py`, pas le vrai parser. Ce chiffre
-ne doit plus être cité.
+**Ce qui est mesuré :**
+
+- Sur 100 décisions tirées au hasard (`seed=42`) dans
+  `cour_de_cassation`, le plafond par **visa structuré** est **1/100**
+  sur `legi_full_v3.sqlite` (10 codes), après correction du bug de
+  contrat `resoudre_reference` → `resoudre_article`. Le chiffre 9/50
+  de la mesure initiale était un **artefact** d'une regex naïve, pas
+  le vrai parser. Ce chiffre ne doit plus être cité.
+- Le plafond par **citations dans le texte** (chaîne C) est
+  **50/100** sur le même tirage. 234 citations candidates, non
+  qualifiées.
+- L'élargissement du corpus de 5 à 10 codes (option B) a été testé
+  et échoue : 0 gain sur le plafond visa. Ne pas refaire.
 
 **Décision à prendre :** l'élargissement du corpus (option B) a été
 testé et échoue. Deux options restent ouvertes : A (API PISTE ciblée,
@@ -218,11 +224,11 @@ expose resteraient hors d'atteinte.
 ### Tests unitaires
 
 ```
-cd /Users/mathieubellot/Projets/beaume
+
 python -m pytest -q tests/unit/test_depot_sqlite.py
 python -m pytest -q tests/unit/test_resoudre_article.py
 
-cd /Users/mathieubellot/Projets/beaume_judi_diag
+_judi_diag
 PYTHONPATH=. python -m pytest -q tests/unit/
 ```
 
@@ -231,7 +237,7 @@ Attendus : 17, 22, 19 — tous verts.
 ### Décompte aléatoire (le chiffre de référence)
 
 ```
-cd /Users/mathieubellot/Projets/beaume_judi_diag
+_judi_diag
 PYTHONPATH=. python scripts/decompte_aleatoire.py \
   --base /Users/mathieubellot/Projets/beaume/data/vector/legi_full_v3.sqlite \
   --n 100 --seed 42
@@ -240,7 +246,7 @@ PYTHONPATH=. python scripts/decompte_aleatoire.py \
 ### Lot 100 inspectable
 
 ```
-cd /Users/mathieubellot/Projets/beaume_judi_diag
+_judi_diag
 PYTHONPATH=. python scripts/extraire_judilibre.py \
   --source local --n 100 \
   --sortie /Users/mathieubellot/Projets/beaume/data/jurisprudence/lot_100.jsonl \
@@ -311,3 +317,82 @@ Documentation :
 ### Corpus
 
 - `data/legal/jurisprudence/cour_de_cassation/` (Arrow, 553 075 décisions, 5 Go)
+
+---
+
+## 8. Addendum 2026-10-21 — chiffres post-fix et chaîne C
+
+Cette section complète les sections 1 et 3 avec les résultats obtenus
+après le commit `350ee17` (acceptation de `str` dans
+`resoudre_article`). Les chiffres ci-dessous prévalent sur ceux des
+sections précédentes.
+
+### Décompte aléatoire v3 après correction du contrat
+
+Répartition des 100 décisions tirées au hasard (`seed=42`) :
+
+- 58 `visa:visa_absent`
+- 10 `visa:code_absent_ou_multiple`
+- 8 `expose:erreur_parsing`
+- 7 `visa:suffixe_non_supporte`
+- 6 `visa:numerotation_ambigue`
+- 3 `visa:plage_ambigue`
+- 2 `date:date_faits_ambigue`
+- 2 `expose:expose_absente`
+- 2 `visa:numero_article_invalide`
+- 1 `DECISION_ACCEPTEE`
+- 1 `visa:code_hors_corpus`
+
+**1/100 sur le visa seul.** Les 2 `resolution:donnees_incoherentes` de
+la mesure précédente sont devenus une décision acceptée (index
+283060). Chiffre honnête, cohérent avec l'ordre de grandeur attendu.
+
+### Chaîne C — citations dans le texte libre
+
+Le bug de contrat entre `resoudre_reference` (chaîne) et
+`DepotSQLite.resoudre_article` (enum) a été corrigé dans `350ee17`.
+Avant correction, toute résolution par citation échouait sur
+`DONNEES_INCOHERENTES` (108/108 sur la mesure C).
+
+Après correction, deux lots produits :
+
+- **Lot 100 séquentiel** (les 100 premières décisions, 1899-1915) :
+  26 acceptées, 32 citations candidates. Artefact historique.
+- **Lot 100 aléatoire** (`--shuffle --seed 42`) : **50 acceptées**,
+  234 citations candidates. Distribution : 4/11/12/19/4 pour
+  1980s→2020s. 23/50 sont post-2010.
+
+Taux cohérent avec `mesure_c_resolution.py` (35/35 échecs visa =
+51 %). **Ce que C ne produit pas :** des labels. 234 citations
+candidates ne sont pas 234 labels. La qualification reste à faire.
+
+### Qualification — non faite
+
+Le lot aléatoire contient 234 citations sur 50 décisions ; aucune
+n'est qualifiée comme décisive. `date_resolution = date_decision`
+(pas la date des faits) est une approximation documentée.
+
+Trois pistes possibles :
+
+1. **Échantillon manuel** : 10 décisions post-2010, lecture des
+   motifs, décision « décisif / incident / incertain ».
+2. **Heuristique documentée** : par exemple « première citation des
+   motifs », avec statut `citation_heuristique_faible`. Fragile.
+3. **Report** : la chaîne C est stable, la qualification peut
+   attendre un prochain chantier.
+
+### Fichiers ajoutés depuis la section 7
+
+Scripts :
+
+- `scripts/extraire_citations.py` (nouveau, 437 lignes : extraction C)
+- `scripts/mesure_c_potentiel.py` (diagnostic C, regex naïve)
+- `scripts/mesure_c_resolution.py` (diagnostic C, résolution réelle)
+
+Lots produits :
+
+- `data/jurisprudence/lot_100.jsonl` (vide : 0 ligne)
+- `data/jurisprudence/citations_candidates.jsonl` (26 lignes,
+  100 premières décisions, artefact historique)
+- `data/jurisprudence/citations_candidates_random.jsonl` (50 lignes,
+  234 citations, tirage aléatoire)
