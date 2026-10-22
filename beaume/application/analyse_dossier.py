@@ -7,6 +7,18 @@ _hydrater_citation et _parse_analyse. Ce changement vise les
 texte_different observes sur bench_qualite : le modele choisissait le
 bon article mais recopiait un extrait qui n'existait pas dans le texte
 officiel.
+
+Correction du 2026-10-22 (option A) : ajout de la detection directe
+des references explicites (_extraire_articles_directs), avec les
+corrections issues de l'audit :
+  - prefixes L/R/D preserves via normaliser_numero() ;
+  - le motif n'attrape plus une annee seule (plus d'« article 2010 ») ;
+  - le code est choisi par cle la plus longue en premier, dans le
+    contexte le plus proche (plus de « procedure civile » lu comme
+    « civil ») ;
+  - PROVENANCE_INSUFFISANTE et les autres statuts non uniques ne sont
+    plus injectes dans les candidats : ils restent visibles comme
+    mentions non resolues.
 """
 from __future__ import annotations
 
@@ -22,10 +34,12 @@ from beaume.application.schemas import schema_analyse_avec_candidats
 from beaume.application.selecteur_chunks import SelecteurChunks
 from beaume.legal.analyse import Analyse
 from beaume.legal.model import Article, Citation, CodeJuridique
+from beaume.legal.normalisation import normaliser_numero
 from beaume.ports.chercheur_articles import ChercheurArticles
 from beaume.ports.depot_articles import DepotArticles, ResultatRechercheArticle
 from beaume.ports.generateur import Generateur
 from beaume.ports.registre import RegistreExtracteurs
+from beaume.ports.resolveur_articles import StatutResolution
 from beaume.utils.logging import get_logger
 
 log = get_logger("analyse_dossier")
@@ -33,6 +47,83 @@ log = get_logger("analyse_dossier")
 
 _SENTINELLE_AUCUN_ARTICLE = "__AUCUN__"
 _RRF_K = 60
+
+
+# ---------------------------------------------------------------------------
+# Detection des references explicites
+# ---------------------------------------------------------------------------
+
+# Formes acceptees :
+#   - "article L.137-2", "articles L. 137-2", "article 2224" ;
+#   - "L.137-2", "R.1234-1", "D.1234-1" sans le mot article ;
+#   - "2224 du Code ..." (nombre suivi d'un code explicite).
+#
+# Les annees seules et les montants ne sont pas captures : la derniere
+# alternative exige un contexte de code, les autres exigent "article"
+# ou un prefixe L/R/D.
+_PATTERN_ARTICLE = re.compile(
+    r"\b(?:"
+    r"articles?\s+(?:L\.?\s*|R\.?\s*|D\.?\s*)?\d+(?:-\d+)*"
+    r"|L\.?\s*\d+(?:-\d+)*"
+    r"|R\.?\s*\d+(?:-\d+)*"
+    r"|D\.?\s*\d+(?:-\d+)*"
+    r"|\d+(?:-\d+)*(?=\s+(?:du|de\s+la|des)\s+[Cc]ode\b)"
+    r")\b",
+    re.IGNORECASE,
+)
+
+# Trié par longueur décroissante pour que « procédure civile » passe
+# avant « civil » et « procédure pénale » avant « pénal » (piège du
+# sous-chaîne : « civil » est une sous-chaîne de « procédure civile »).
+_CODES_PAR_LONGUEUR = sorted(
+    [
+        ("consommation", CodeJuridique.CODE_CONSOMMATION),
+        ("civil", CodeJuridique.CODE_CIVIL),
+        ("travail", CodeJuridique.CODE_TRAVAIL),
+        ("commerce", CodeJuridique.CODE_COMMERCE),
+        ("sécurité sociale", CodeJuridique.CODE_SECURITE_SOCIALE),
+        ("urbanisme", CodeJuridique.CODE_URBANISME),
+        ("environnement", CodeJuridique.CODE_ENVIRONNEMENT),
+        ("pénal", CodeJuridique.CODE_PENAL),
+        ("procédure civile", CodeJuridique.CODE_PROCEDURE_CIVILE),
+        ("procédure pénale", CodeJuridique.CODE_PROCEDURE_PENALE),
+    ],
+    key=lambda kv: -len(kv[0]),
+)
+
+# Coupure de clause pour ne pas regarder au-delà de la référence
+# immédiate : « du Code civil et l'article 2 du Code du travail » ne
+# doit pas attribuer « travail » à l'article 1.
+_CLAUSE_BREAK = re.compile(r"(?:\s+et\s+|\.\s|\n|;\s|\?\s|!\s)")
+
+
+def _trouver_code_dans_contexte(
+    texte: str, debut: int, fin: int
+) -> CodeJuridique | None:
+    """Code le plus proche et le plus specifique autour de la reference.
+
+    Priorite :
+    1. apres la reference, limite a la clause courante ;
+    2. apres la reference, fenetre entiere (80 caracteres) ;
+    3. avant la reference (80 caracteres).
+
+    Le tri par longueur decroissante evite que « civil » masque
+    « procedure civile ».
+    """
+    apres_brut = texte[fin:fin + 80].lower()
+    m = _CLAUSE_BREAK.search(apres_brut)
+    apres_clause = apres_brut[:m.start()] if m else apres_brut
+    for nom, code in _CODES_PAR_LONGUEUR:
+        if nom in apres_clause:
+            return code
+    for nom, code in _CODES_PAR_LONGUEUR:
+        if nom in apres_brut:
+            return code
+    avant = texte[max(0, debut - 80):debut].lower()
+    for nom, code in _CODES_PAR_LONGUEUR:
+        if nom in avant:
+            return code
+    return None
 
 
 class ErreurAnalyse(Exception):
@@ -326,6 +417,104 @@ class AnalyseDossier:
         self.limite_articles = limite_articles
         self.limite_candidats = limite_candidats
 
+    def _extraire_articles_directs(
+        self, texte: str, date_reference: date
+    ) -> tuple[list[Article], list[dict]]:
+        """Detecte les references explicites dans le texte fourni.
+
+        Retourne (articles_resolus, mentions_non_resolues).
+
+        Seuls les statuts UNIQUE sont ajoutes a `articles_resolus` :
+        ce sont les seuls candidats transmissibles au LLM. Les autres
+        statuts (PROVENANCE_INSUFFISANTE, AMBIGUITE_*, REFERENCE_ABSENTE,
+        AUCUNE_VERSION_A_LA_DATE, ERREUR_TECHNIQUE, ou absence de code
+        dans le contexte) sont conserves dans `mentions_non_resolues`
+        avec leur motif : visibles, jamais presentes comme applicables.
+
+        La resolution exige un code explicite dans le contexte. Sans
+        code identifiable, la mention n'est pas resolue : elle n'est
+        pas devinee.
+        """
+        if not hasattr(self.depot, "resoudre_article"):
+            log.info(
+                "Resolution directe indisponible : le depot n'expose "
+                "pas resoudre_article. Les references explicites ne "
+                "sont pas resolues dans cette analyse."
+            )
+            return [], []
+
+        articles_resolus: list[Article] = []
+        mentions_non_resolues: list[dict] = []
+        vus: set[str] = set()
+
+        for match in _PATTERN_ARTICLE.finditer(texte):
+            brut = match.group(0).strip()
+            # Retire le mot "article" mais conserve le prefixe L/R/D.
+            numero_brut = re.sub(
+                r"^articles?\s+", "", brut, flags=re.IGNORECASE
+            )
+            numero = normaliser_numero(numero_brut)
+            if not numero:
+                continue
+
+            code = _trouver_code_dans_contexte(
+                texte, match.start(), match.end()
+            )
+            if code is None:
+                mentions_non_resolues.append(
+                    {
+                        "reference_brute": brut,
+                        "numero_normalise": numero,
+                        "code": None,
+                        "offset": match.start(),
+                        "statut": "code_absent_du_contexte",
+                        "motif": (
+                            "Aucun code juridique explicite dans le "
+                            "contexte de la reference."
+                        ),
+                    }
+                )
+                continue
+
+            try:
+                res = self.depot.resoudre_article(
+                    code, numero, date_reference, strict=False
+                )
+            except Exception as e:
+                log.debug(
+                    "Erreur resolution directe %s %s : %s",
+                    code, numero, e,
+                )
+                continue
+
+            if res.statut == StatutResolution.UNIQUE and res.article_id_famille:
+                article = self.depot.trouver_par_id(
+                    res.article_id_famille, date_reference
+                )
+                if article is not None and article.id.valeur not in vus:
+                    articles_resolus.append(article)
+                    vus.add(article.id.valeur)
+                continue
+
+            mentions_non_resolues.append(
+                {
+                    "reference_brute": brut,
+                    "numero_normalise": numero,
+                    "code": (
+                        code.value if hasattr(code, "value") else str(code)
+                    ),
+                    "offset": match.start(),
+                    "statut": (
+                        res.statut.value
+                        if hasattr(res.statut, "value")
+                        else str(res.statut)
+                    ),
+                    "motif": res.message or "",
+                }
+            )
+
+        return articles_resolus, mentions_non_resolues
+
     def _enrichir_articles(
         self,
         resultats_par_chunk: Sequence[Sequence[ResultatRechercheArticle]],
@@ -416,24 +605,43 @@ class AnalyseDossier:
         selection = self.selecteur.selectionner(all_chunks)
         texte_dossier = self.selecteur.formater_pour_prompt(selection)
 
+        # Detection directe sur le texte complet (pas seulement la
+        # selection destinee au prompt) : une reference citee dans un
+        # passage ecarte du prompt ne doit pas disparaitre.
+        texte_complet = "\n".join(chunks_texte)
+        articles_directs, mentions_non_resolues = (
+            self._extraire_articles_directs(texte_complet, date_reference)
+        )
+
         resultats_recherche_par_chunk = []
         for chunk in chunks_texte:
             resultats_recherche_par_chunk.append(
                 self.chercheur.chercher(chunk, limite=self.limite_articles)
             )
 
-        articles_candidats = self._enrichir_articles(
+        articles_fts5 = self._enrichir_articles(
             resultats_recherche_par_chunk, date_reference,
         )
+
+        # Fusion : references directes d'abord (elles sont explicitement
+        # citees dans les pieces), puis FTS5 sans doublon, plafonnees.
+        ids_directs = {a.id.valeur for a in articles_directs}
+        articles_candidats = (
+            articles_directs
+            + [a for a in articles_fts5 if a.id.valeur not in ids_directs]
+        )[: self.limite_candidats]
+
         ids_candidats = tuple(a.id.valeur for a in articles_candidats)
         candidats_par_id = set(ids_candidats)
         nombre_hits = sum(len(groupe) for groupe in resultats_recherche_par_chunk)
 
         log.info(
-            "Analyse dossier : %d chunks, %d articles candidats applicables "
-            "(%d hits chercheur, limite globale=%d)",
+            "Analyse dossier : %d chunks, %d articles candidats "
+            "(%d directs, %d via FTS5, %d hits chercheur, "
+            "%d mentions non resolues, limite globale=%d)",
             len(chunks_texte), len(articles_candidats),
-            nombre_hits, self.limite_candidats,
+            len(articles_directs), len(articles_fts5),
+            nombre_hits, len(mentions_non_resolues), self.limite_candidats,
         )
 
         prompt = construire_prompt(
@@ -481,8 +689,9 @@ class AnalyseDossier:
         )
         if not ids_candidats:
             message = (
-                "Aucun article candidat n'a ete retourne par la recherche; "
-                "aucune citation juridique ne pouvait etre selectionnee."
+                "Aucun article candidat n'a ete identifie (recherche et "
+                "detection directe); aucune citation juridique ne pouvait "
+                "etre selectionnee."
             )
             analyse = analyse.model_copy(
                 update={"avertissements": (*analyse.avertissements, message)}
@@ -491,6 +700,19 @@ class AnalyseDossier:
             message = (
                 "Aucun article n'a ete selectionne; cela ne prouve pas "
                 "qu'aucun texte juridique ne s'applique."
+            )
+            analyse = analyse.model_copy(
+                update={"avertissements": (*analyse.avertissements, message)}
+            )
+        if mentions_non_resolues:
+            refs = ", ".join(
+                m["reference_brute"] for m in mentions_non_resolues
+            )
+            message = (
+                f"{len(mentions_non_resolues)} reference(s) explicite(s) "
+                f"detectee(s) mais non resolue(s) : {refs}. Ces mentions "
+                "ne sont pas des articles applicables ; elles restent "
+                "visibles pour verification humaine."
             )
             analyse = analyse.model_copy(
                 update={"avertissements": (*analyse.avertissements, message)}
