@@ -202,11 +202,25 @@ def test_H02_absent_accepte_sur_tout_champ_aucune_notion_d_obligatoire():
     assert Scenario(**d) and _valeurs(d) is ResultatControle.REUSSI
 
 
-def test_H03_inversion_des_parties_structurellement_valide():
+def test_H03_inversion_des_parties_desormais_rejetee():
+    """Depuis F-b1, la convention NOM_<role> est verifiee :
+    NOM_DEMANDEUR vers un acteur sans role 'demandeur' est ECHOUE."""
     d = _avec_champ("NOM_DEMANDEUR", {"type": "reference", "cible": "scn:actor:e", "attribut": "display_name"}, "texte")
-    r = valider_scenario(Scenario(**d))
     sc = Scenario(**d)
-    assert r.accepte(sc) is True  # personne ne relie la balise au role
+    r = valider_scenario(sc)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    from beaume.scenario.rapport import ResultatControle
+    assert c.resultat is ResultatControle.ECHOUE
+
+
+def test_H03_inversion_conforme_acceptee():
+    """Cas symetrique : NOM_DEMANDEUR vers un acteur de role demandeur."""
+    d = _avec_champ("NOM_DEMANDEUR", {"type": "reference", "cible": "scn:actor:s", "attribut": "display_name"}, "texte")
+    sc = Scenario(**d)
+    r = valider_scenario(sc)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    from beaume.scenario.rapport import ResultatControle
+    assert c.resultat is ResultatControle.REUSSI
 
 
 def test_H04_difference_jours_negative_acceptee():
@@ -215,10 +229,26 @@ def test_H04_difference_jours_negative_acceptee():
     assert r["scn:calc:a"].valeur == "-366"
 
 
-def test_H05_montant_calcule_negatif_ou_sans_arrondi():
+def test_H05_montant_calcule_arrondi_half_up():
+    """Depuis F-b2-gamma, la regle est : 2 decimales, HALF_UP.
+    L'ancien test verifiait l'absence d'arrondi (etat pre-F-b2-gamma)."""
     r = resoudre([Calcul(calcul_id="scn:calc:a", operation="multiplier_montant",
                          arguments=["1000.00", "0.333"])])
-    assert r["scn:calc:a"].valeur == "333.00000"  # aucune regle d'arrondi au centime
+    assert r["scn:calc:a"].valeur == "333.00"
+
+
+def test_H05_montant_calcule_half_up_arrondi_au_dessus():
+    """Verification independante de la regle HALF_UP : 0.005 -> 0.01."""
+    r = resoudre([Calcul(calcul_id="scn:calc:a", operation="multiplier_montant",
+                         arguments=["100.00", "0.00005"])])
+    assert r["scn:calc:a"].valeur == "0.01"
+
+
+def test_H05_montant_calcule_half_up_arrondi_au_dessous():
+    """0.004 -> 0.00."""
+    r = resoudre([Calcul(calcul_id="scn:calc:a", operation="multiplier_montant",
+                         arguments=["100.00", "0.00004"])])
+    assert r["scn:calc:a"].valeur == "0.00"
 
 
 def test_H06_references_invoquees_vers_acteur_refusees():
@@ -302,5 +332,16 @@ def test_R10_input_nan_filtre():
 
 
 def test_R11_exemple_accepte():
+    from pathlib import Path as _P
+    racine = _P(__file__).resolve().parents[2]
     sc = Scenario(**json.loads(EXEMPLE.read_text(encoding="utf-8")))
-    assert valider_scenario(sc).accepte(sc) is True
+    r = valider_scenario(sc, racine=racine)
+    assert r.accepte(sc, racine=racine) is True
+    assert r.empreintes_templates, "le rapport doit porter les empreintes de templates"
+
+
+def test_R11_exemple_refuse_sans_racine():
+    """Depuis F-b1, un scenario avec template exige une racine a l'acceptation."""
+    sc = Scenario(**json.loads(EXEMPLE.read_text(encoding="utf-8")))
+    r = valider_scenario(sc, racine=None)
+    assert r.accepte(sc, racine=None) is False

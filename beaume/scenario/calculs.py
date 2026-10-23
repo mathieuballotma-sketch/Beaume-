@@ -8,7 +8,7 @@ argument est soit une reference a un autre calcul (prefixe
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Callable, Literal, Union
 
 from pydantic import BaseModel, ConfigDict
@@ -51,11 +51,13 @@ def _op_difference_jours(a, b):
 
 
 def _op_multiplier_montant(a, b):
-    return a * b
+    # Convention commerciale francaise : 2 decimales, HALF_UP.
+    return (a * b).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 def _op_somme_montants(a, b):
-    return a + b
+    # Convention commerciale francaise : 2 decimales, HALF_UP.
+    return (a + b).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 # (fn, type_sortie, signature[types par position])

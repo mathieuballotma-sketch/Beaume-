@@ -39,7 +39,7 @@ from beaume.scenario.rapport import Controle, RapportValidation, ResultatControl
 
 # "2" : formats litteraux stricts, dates_valides effectif,
 # auteur != destinataire (audit lot F, 2026-10-23).
-VERSION_REGLE = "2"
+VERSION_REGLE = "3"
 
 # Hypotheses de contrat (a confirmer par Mathieu) :
 # montant = chiffres ASCII, point decimal, 2 decimales max, >= 0, 15 chiffres max ;
@@ -66,9 +66,21 @@ CONTROLES_OBLIGATOIRES_AVEC_CALCULS: set[str] = CONTROLES_OBLIGATOIRES | {
 
 
 def controles_requis(scenario: Scenario) -> set[str]:
-    if scenario.calculs:
-        return CONTROLES_OBLIGATOIRES_AVEC_CALCULS
-    return CONTROLES_OBLIGATOIRES
+    base = (
+        CONTROLES_OBLIGATOIRES_AVEC_CALCULS
+        if scenario.calculs
+        else CONTROLES_OBLIGATOIRES
+    )
+    requis = set(base)
+    if any(d.contenu.mode == "template" for d in scenario.documents):
+        requis.add("generation.templates_coherents")
+    if any(
+        nom.startswith("NOM_")
+        for d in scenario.documents
+        for nom in d.contenu.champs
+    ):
+        requis.add("structure.balises_roles")
+    return requis
 
 TYPE_SORTIE_CALC: dict[str, TypeChamp] = {
     "ajouter_jours": TypeChamp.DATE,
@@ -582,7 +594,60 @@ def verifier_templates(scenario: Scenario, racine: Path) -> Controle:
     return _c("generation.templates_coherents", res, objets, " ; ".join(echecs))
 
 
-def valider_scenario(scenario: Scenario) -> RapportValidation:
+def _balises_roles(scenario: Scenario) -> Controle:
+    """Convention H03 : tout champ NOM_<suffixe> doit etre une
+    ValeurReference vers un acteur dont les roles contiennent
+    <suffixe.lower()>. Detecte les inversions demandeur/defendeur.
+    """
+    objets: list[str] = []
+    echecs: list[str] = []
+    for d in scenario.documents:
+        for nom_champ, valeur in d.contenu.champs.items():
+            if not nom_champ.startswith("NOM_"):
+                continue
+            ref = f"{d.document_id}.{nom_champ}"
+            objets.append(ref)
+            suffixe = nom_champ[4:].lower()
+            if not isinstance(valeur, ValeurReference):
+                echecs.append(
+                    f"{ref}: doit etre une reference a un acteur, "
+                    f"pas {valeur.type}"
+                )
+                continue
+            if not valeur.cible.startswith("scn:actor:"):
+                echecs.append(
+                    f"{ref}: cible {valeur.cible!r} n'est pas un acteur"
+                )
+                continue
+            acteur = next(
+                (a for a in scenario.actors if a.actor_id == valeur.cible),
+                None,
+            )
+            if acteur is None:
+                echecs.append(
+                    f"{ref}: acteur {valeur.cible!r} introuvable"
+                )
+                continue
+            if suffixe not in acteur.roles:
+                echecs.append(
+                    f"{ref}: suffixe {suffixe!r} absent des roles "
+                    f"{acteur.roles} de {acteur.actor_id}"
+                )
+    if not objets:
+        return _c(
+            "structure.balises_roles",
+            ResultatControle.NON_APPLICABLE,
+            [],
+            "aucun champ NOM_",
+        )
+    res = ResultatControle.ECHOUE if echecs else ResultatControle.REUSSI
+    return _c("structure.balises_roles", res, objets, " ; ".join(echecs))
+
+
+def valider_scenario(
+    scenario: Scenario,
+    racine=None,
+) -> RapportValidation:
     controles = [
         _ids_uniques(scenario),
         _references_resolues(scenario),
@@ -593,7 +658,33 @@ def valider_scenario(scenario: Scenario) -> RapportValidation:
         _acteurs_roles_coherents(scenario),
         _calculs_valides(scenario),
         _coherence_dates_calculees(scenario),
+        _balises_roles(scenario),
     ]
+    empreintes_templates: dict[str, str] = {}
+    has_templates = any(
+        d.contenu.mode == "template" for d in scenario.documents
+    )
+    if has_templates:
+        if racine is None:
+            controles.append(
+                _c(
+                    "generation.templates_coherents",
+                    ResultatControle.INDETERMINE,
+                    [],
+                    "racine requise pour verifier les templates",
+                )
+            )
+        else:
+            controles.append(verifier_templates(scenario, racine))
+            base = (racine / "data" / "scenarios" / "structures").resolve()
+            for d in scenario.documents:
+                if d.contenu.mode != "template":
+                    continue
+                chemin = (racine / d.contenu.chemin).resolve()
+                if base in chemin.parents and chemin.is_file():
+                    empreintes_templates[d.contenu.chemin] = hashlib.sha256(
+                        chemin.read_bytes()
+                    ).hexdigest()
     return RapportValidation(
         rapport_id=f"rapport:{scenario.scenario_id}:v{scenario.scenario_version}",
         scenario_id=scenario.scenario_id,
@@ -602,4 +693,5 @@ def valider_scenario(scenario: Scenario) -> RapportValidation:
         empreinte_scenario=empreinte_scenario(scenario),
         genere_le=datetime.now(timezone.utc),
         controles=controles,
+        empreintes_templates=empreintes_templates,
     )

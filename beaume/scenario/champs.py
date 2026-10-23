@@ -8,6 +8,18 @@ Trois variantes discriminees :
 
 Aucun acces arbitraire a des proprietes. Aucun eval.
 La validite structurelle d'une reference ne prouve pas sa valeur.
+
+Choix reportes explicitement :
+- H02 champs obligatoires par template : reporte a F-b3 (.meta.json).
+  Aujourd'hui, un champ absent n'est pas rejete au niveau du champ
+  lui-meme : c'est la balise du template qui impose sa presence
+  (parite balises/champs, F-b1).
+- H04 difference de jours negative : autorisee. Un delta signe est
+  une information (retard, avance), pas une erreur.
+- H06 propositions invoquant un acteur ou une assertion : refuse.
+  `references_invoquees` n'accepte que src:, scn:doc:, scn:event:,
+  scn:calc:. Un acteur se cite par son nom via un champ, pas dans
+  une proposition juridique.
 """
 from __future__ import annotations
 

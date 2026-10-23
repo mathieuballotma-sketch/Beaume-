@@ -1,6 +1,7 @@
 """Rapport de validation separe du scenario."""
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime
 from enum import Enum
 from typing import Literal
@@ -34,18 +35,23 @@ class RapportValidation(BaseModel):
     empreinte_scenario: str
     genere_le: datetime
     controles: list[Controle] = Field(default_factory=list)
+    empreintes_templates: dict[str, str] = Field(default_factory=dict)
 
     def accepte(
         self,
         scenario,
         obligatoires: set[str] | None = None,
+        racine=None,
     ) -> bool:
         """Verdict d'acceptation. Le scenario est obligatoire.
 
         - l'empreinte du scenario est confrontee a celle du rapport ;
+        - si le scenario contient un template, le rapport doit porter
+          les empreintes des templates et racine doit etre fourni pour
+          les recalculer ; toute divergence invalide le rapport ;
         - les controles requis sont determines automatiquement ;
-        - chaque controle obligatoire doit etre reussi ET porte
-          la version de regle attendue par le code courant.
+        - chaque controle obligatoire doit etre reussi ET porte la
+          version de regle attendue par le code courant.
         """
         from beaume.scenario.validateur import (
             VERSION_REGLE,
@@ -54,7 +60,23 @@ class RapportValidation(BaseModel):
         )
         if empreinte_scenario(scenario) != self.empreinte_scenario:
             return False
-        # `obligatoires` peut AJOUTER des controles, jamais en retirer.
+        has_templates = any(
+            d.contenu.mode == "template" for d in scenario.documents
+        )
+        if has_templates:
+            if not self.empreintes_templates:
+                return False
+            if racine is None:
+                return False
+            base = (racine / "data" / "scenarios" / "structures").resolve()
+            for rel_chemin, h_stored in self.empreintes_templates.items():
+                chemin = (racine / rel_chemin).resolve()
+                if base not in chemin.parents:
+                    return False
+                if not chemin.is_file():
+                    return False
+                if hashlib.sha256(chemin.read_bytes()).hexdigest() != h_stored:
+                    return False
         requis = controles_requis(scenario) | (obligatoires or set())
         presents = {c.controle_id for c in self.controles}
         if not requis <= presents:
