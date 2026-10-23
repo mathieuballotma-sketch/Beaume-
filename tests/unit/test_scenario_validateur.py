@@ -795,3 +795,195 @@ def test_coherence_multiple_dont_une_date_correspond():
     c = [x for x in r.controles
          if x.controle_id == "structure.coherence_dates_calculees"][0]
     assert c.resultat is ResultatControle.REUSSI
+
+
+
+# --- F-b1 : templates, empreintes, convention NOM_ ---
+
+import hashlib as _hashlib
+from pathlib import Path as _Path
+
+_RACINE = _Path(__file__).resolve().parents[2]
+
+
+def _prov_local():
+    return {"mode": "cree", "regle": "r", "parametres": {}}
+
+
+def _template_scenario(champs_override=None, chemin=None):
+    chemin = chemin or "data/scenarios/structures/saisine_prud_hommes.md"
+    champs = {
+        "NOM_DEMANDEUR": {"type": "reference", "cible": "scn:actor:s",
+                          "attribut": "display_name"},
+        "NOM_DEFENDEUR": {"type": "reference", "cible": "scn:actor:e",
+                          "attribut": "display_name"},
+        "EXPOSE_FAITS": {"type": "litteral", "valeur": "x"},
+        "MONTANT": {"type": "litteral", "valeur": "100.00"},
+        "LIEU": {"type": "absent", "motif": "non_renseigne_source"},
+        "DATE_ACTUELLE": {"type": "reference", "cible": "scn:doc:saisine",
+                          "attribut": "date"},
+    }
+    if champs_override:
+        champs.update(champs_override)
+    declarations = {
+        "NOM_DEMANDEUR": "texte",
+        "NOM_DEFENDEUR": "texte",
+        "EXPOSE_FAITS": "texte",
+        "MONTANT": "montant",
+        "LIEU": "texte",
+        "DATE_ACTUELLE": "date",
+    }
+    return Scenario(
+        schema_version="0.3",
+        scenario_id="BEAUME-SC-0002",
+        scenario_version=1,
+        partition="dev",
+        domain="d",
+        language="fr",
+        created_at="2026-10-23",
+        sources=[],
+        actors=[
+            {"actor_id": "scn:actor:s", "display_name": "S",
+             "roles": ["demandeur"], "provenance": _prov_local()},
+            {"actor_id": "scn:actor:e", "display_name": "E",
+             "roles": ["defendeur"], "provenance": _prov_local()},
+        ],
+        events=[{
+            "event_id": "scn:event:x",
+            "date": {"valeur": "2020-01-01", "precision": "jour"},
+            "description": "d",
+            "actors_impliques": ["scn:actor:s"],
+            "provenance": _prov_local(),
+        }],
+        documents=[{
+            "document_id": "scn:doc:saisine",
+            "titre": "t",
+            "date": {"valeur": "2026-01-01", "precision": "jour"},
+            "nature": "saisine",
+            "auteur": "scn:actor:s",
+            "assertions": [],
+            "contenu": {
+                "mode": "template",
+                "chemin": chemin,
+                "champs": champs,
+                "declarations": declarations,
+            },
+            "provenance": _prov_local(),
+        }],
+        propositions_juridiques=[],
+    )
+
+
+def test_version_regle_est_3():
+    from beaume.scenario.validateur import VERSION_REGLE
+    assert VERSION_REGLE == "3"
+
+
+def test_controles_requis_sans_template():
+    from beaume.scenario.validateur import controles_requis
+    req = controles_requis(_scenario())
+    assert "generation.templates_coherents" not in req
+    assert "structure.balises_roles" not in req
+
+
+def test_controles_requis_avec_template_ajoute_generation():
+    from beaume.scenario.validateur import controles_requis
+    req = controles_requis(_template_scenario())
+    assert "generation.templates_coherents" in req
+    assert "structure.balises_roles" in req
+
+
+def test_balises_roles_conforme_reussi():
+    sc = _template_scenario()
+    r = valider_scenario(sc, racine=_RACINE)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    assert c.resultat is ResultatControle.REUSSI
+
+
+def test_balises_roles_inversion_rejetee():
+    sc = _template_scenario(champs_override={
+        "NOM_DEMANDEUR": {"type": "reference", "cible": "scn:actor:e",
+                          "attribut": "display_name"},
+    })
+    r = valider_scenario(sc, racine=_RACINE)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    assert c.resultat is ResultatControle.ECHOUE
+    assert "suffixe" in c.motif
+
+
+def test_balises_roles_litteral_rejete():
+    sc = _template_scenario(champs_override={
+        "NOM_DEMANDEUR": {"type": "litteral", "valeur": "Dupont"},
+    })
+    r = valider_scenario(sc, racine=_RACINE)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    assert c.resultat is ResultatControle.ECHOUE
+
+
+def test_balises_roles_absent_rejete():
+    sc = _template_scenario(champs_override={
+        "NOM_DEMANDEUR": {"type": "absent", "motif": "non_defini_scenario"},
+    })
+    r = valider_scenario(sc, racine=_RACINE)
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    assert c.resultat is ResultatControle.ECHOUE
+
+
+def test_balises_roles_non_applicable_sans_nom():
+    r = valider_scenario(_scenario())
+    c = [x for x in r.controles if x.controle_id == "structure.balises_roles"][0]
+    assert c.resultat is ResultatControle.NON_APPLICABLE
+
+
+def test_racine_absente_avec_template_indetermine():
+    sc = _template_scenario()
+    r = valider_scenario(sc, racine=None)
+    c = [x for x in r.controles
+         if x.controle_id == "generation.templates_coherents"][0]
+    assert c.resultat is ResultatControle.INDETERMINE
+    assert r.accepte(sc, racine=None) is False
+
+
+def test_valider_avec_racine_rapport_valide():
+    sc = _template_scenario()
+    r = valider_scenario(sc, racine=_RACINE)
+    assert r.empreintes_templates
+    assert "data/scenarios/structures/saisine_prud_hommes.md" in r.empreintes_templates
+    c = [x for x in r.controles
+         if x.controle_id == "generation.templates_coherents"][0]
+    assert c.resultat is ResultatControle.REUSSI
+    assert r.accepte(sc, racine=_RACINE) is True
+
+
+def test_rapport_forge_sans_empreintes_refuse():
+    sc = _template_scenario()
+    r = valider_scenario(sc, racine=_RACINE)
+    r.empreintes_templates = {}
+    assert r.accepte(sc, racine=_RACINE) is False
+
+
+def test_empreinte_template_alteree_rejetee(tmp_path):
+    sc = _template_scenario()
+    dst = tmp_path / "data" / "scenarios" / "structures" / "saisine_prud_hommes.md"
+    dst.parent.mkdir(parents=True)
+    src = _RACINE / "data" / "scenarios" / "structures" / "saisine_prud_hommes.md"
+    dst.write_bytes(src.read_bytes())
+    r = valider_scenario(sc, racine=tmp_path)
+    assert r.accepte(sc, racine=tmp_path) is True
+    dst.write_text(dst.read_text() + "\n", encoding="utf-8")
+    assert r.accepte(sc, racine=tmp_path) is False
+
+
+def test_accepte_avec_template_et_racine_none_refuse():
+    sc = _template_scenario()
+    r = valider_scenario(sc, racine=_RACINE)
+    assert r.empreintes_templates
+    assert r.accepte(sc, racine=None) is False
+
+
+def test_template_hors_structures_rejete():
+    sc = _template_scenario(chemin="../../etc/passwd")
+    r = valider_scenario(sc, racine=_RACINE)
+    c = [x for x in r.controles
+         if x.controle_id == "generation.templates_coherents"][0]
+    assert c.resultat is ResultatControle.ECHOUE

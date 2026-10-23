@@ -43,6 +43,18 @@ class PorteeAssertion(str, Enum):
     ARGUMENT_JURIDIQUE = "argument_juridique"
 
 
+class RoleActeur(str, Enum):
+    """Roles fermes d'un acteur. Un role inconnu est refuse
+    au parsing : il doit etre ajoute explicitement au contrat."""
+    DEMANDEUR = "demandeur"
+    DEFENDEUR = "defendeur"
+    SALARIE = "salarie"
+    EMPLOYEUR = "employeur"
+    AVOCAT_DEMANDEUR = "avocat_demandeur"
+    AVOCAT_DEFENDEUR = "avocat_defendeur"
+    TEMOIN = "temoin"
+
+
 class StatutProposition(str, Enum):
     NON_EVALUEE = "non_evaluee"
     EN_ATTENTE = "en_attente"
@@ -132,7 +144,7 @@ class Acteur(BaseModel):
     model_config = ConfigDict(extra="forbid")
     actor_id: str
     display_name: str
-    roles: list[str] = Field(min_length=1)
+    roles: list[RoleActeur] = Field(min_length=1)
     provenance: Provenance
 
     @field_validator("actor_id")

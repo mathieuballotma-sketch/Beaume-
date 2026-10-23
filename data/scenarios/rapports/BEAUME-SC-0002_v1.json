@@ -4,11 +4,11 @@
   "scenario_version": 1,
   "schema_version": "0.3",
   "empreinte_scenario": "d1936e624ce9e132014c28dab78a2d07a6c728a6e8d16fdb334635f0cb2938b8",
-  "genere_le": "2026-10-23T10:37:34.539441Z",
+  "genere_le": "2026-10-23T10:58:14.467145Z",
   "controles": [
     {
       "controle_id": "structure.ids_uniques",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:actor:salarie",
@@ -27,7 +27,7 @@
     },
     {
       "controle_id": "structure.references_resolues",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:actor:salarie",
@@ -45,7 +45,7 @@
     },
     {
       "controle_id": "structure.provenance_complete",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:actor:salarie",
@@ -63,7 +63,7 @@
     },
     {
       "controle_id": "structure.dates_valides",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:event:embauche",
@@ -76,7 +76,7 @@
     },
     {
       "controle_id": "structure.declarations_champs",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:doc:saisine.DATE_ACTUELLE",
@@ -100,7 +100,7 @@
     },
     {
       "controle_id": "structure.valeurs_champs",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [
         "scn:doc:saisine.NOM_DEMANDEUR",
@@ -124,7 +124,7 @@
     },
     {
       "controle_id": "scenario.acteurs_roles_coherents",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "scenario",
       "objets_controles": [
         "scn:actor:salarie",
@@ -135,7 +135,7 @@
     },
     {
       "controle_id": "structure.calculs_valides",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [],
       "resultat": "non_applicable",
@@ -143,11 +143,39 @@
     },
     {
       "controle_id": "structure.coherence_dates_calculees",
-      "version_regle": "2",
+      "version_regle": "3",
       "categorie": "structure",
       "objets_controles": [],
       "resultat": "non_applicable",
       "motif": "aucun calcul defini"
+    },
+    {
+      "controle_id": "structure.balises_roles",
+      "version_regle": "3",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:doc:saisine.NOM_DEMANDEUR",
+        "scn:doc:saisine.NOM_DEFENDEUR",
+        "scn:doc:conclusions_demandeur.NOM_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.NOM_DEFENDEUR"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "generation.templates_coherents",
+      "version_regle": "3",
+      "categorie": "generation",
+      "objets_controles": [
+        "scn:doc:saisine",
+        "scn:doc:conclusions_demandeur"
+      ],
+      "resultat": "reussi",
+      "motif": ""
     }
-  ]
+  ],
+  "empreintes_templates": {
+    "data/scenarios/structures/saisine_prud_hommes.md": "012b4c26f6e71831c685b751e17eb53a183ef49e67d3da938864e25790a358fc",
+    "data/scenarios/structures/conclusions_prud.md": "aa7e9bff21862ca6705b3d39615dfc699db5b7add259d382a90b68baf6bc685b"
+  }
 }

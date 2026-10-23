@@ -31,7 +31,7 @@ def main(chemin: Path) -> int:
     except (OSError, json.JSONDecodeError, ValidationError) as exc:
         print(f"Scenario illisible ou invalide : {exc}", file=sys.stderr)
         return 3
-    rapport = valider_scenario(scenario)
+    rapport = valider_scenario(scenario, racine=RACINE)
     RAPPORTS.mkdir(parents=True, exist_ok=True)
     sortie = RAPPORTS / f"{scenario.scenario_id}_v{scenario.scenario_version}.json"
     if sortie.exists():
@@ -41,7 +41,7 @@ def main(chemin: Path) -> int:
         json.dumps(rapport.model_dump(mode="json"), indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
-    accepte = rapport.accepte(scenario)
+    accepte = rapport.accepte(scenario, racine=RACINE)
     print(f"Rapport ecrit : {sortie}")
     print(f"Accepte : {accepte}")
     for c in rapport.controles:
