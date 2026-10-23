@@ -39,7 +39,7 @@ from beaume.scenario.rapport import Controle, RapportValidation, ResultatControl
 
 # "2" : formats litteraux stricts, dates_valides effectif,
 # auteur != destinataire (audit lot F, 2026-10-23).
-VERSION_REGLE = "3"
+VERSION_REGLE = "4"
 
 # Hypotheses de contrat (a confirmer par Mathieu) :
 # montant = chiffres ASCII, point decimal, 2 decimales max, >= 0, 15 chiffres max ;
@@ -54,6 +54,7 @@ CONTROLES_OBLIGATOIRES: set[str] = {
     "structure.references_resolues",
     "structure.provenance_complete",
     "structure.dates_valides",
+    "scenario.evenements_chronologiques",
     "structure.declarations_champs",
     "structure.valeurs_champs",
     "scenario.acteurs_roles_coherents",
@@ -644,11 +645,45 @@ def _balises_roles(scenario: Scenario) -> Controle:
     return _c("structure.balises_roles", res, objets, " ; ".join(echecs))
 
 
+def _evenements_chronologiques(scenario: Scenario) -> Controle:
+    """Verifie que scenario.events est trie par date croissante.
+
+    Option 1 (arbitrage du 23/10) : ordre declaratif, pas de semantique
+    de "relate_events". Les dates egales sont autorisees. Moins de deux
+    evenements : rien a ordonner, REUSSI.
+    """
+    objets = [e.event_id for e in scenario.events]
+    if len(scenario.events) < 2:
+        return _c(
+            "scenario.evenements_chronologiques",
+            ResultatControle.REUSSI,
+            objets,
+        )
+    for i in range(1, len(scenario.events)):
+        precedent = scenario.events[i - 1]
+        courant = scenario.events[i]
+        if courant.date.valeur < precedent.date.valeur:
+            return _c(
+                "scenario.evenements_chronologiques",
+                ResultatControle.ECHOUE,
+                objets,
+                f"{courant.event_id} ({courant.date.valeur.isoformat()}) "
+                f"anterieur a {precedent.event_id} "
+                f"({precedent.date.valeur.isoformat()})",
+            )
+    return _c(
+        "scenario.evenements_chronologiques",
+        ResultatControle.REUSSI,
+        objets,
+    )
+
+
 def valider_scenario(
     scenario: Scenario,
     racine=None,
 ) -> RapportValidation:
     controles = [
+        _evenements_chronologiques(scenario),
         _ids_uniques(scenario),
         _references_resolues(scenario),
         _provenance_complete(scenario),
