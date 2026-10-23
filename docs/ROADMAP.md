@@ -3,7 +3,7 @@
 Ce document regroupe les idées, l'architecture cible et les étapes de construction de Beaume. Il doit être mis à jour à chaque avancée majeure ou nouvelle idée validée.
 
 ## 🎯 1. Philosophie & Contraintes (Non négociables)
-- **Analyse locale et confidentialité** : Objectif : traiter les dossiers sur la machine de l'avocat, avec Ollama local. L'absence de fuite reste à vérifier par un audit de configuration et de flux. Les scripts de préparation peuvent utiliser un service externe uniquement pour des données publiques ou synthétiques autorisées à cet usage, sans document client. Voir le périmètre dans le [README](../README.md).
+- **Analyse locale et confidentialité** : Objectif : traiter les dossiers sur la machine de l'avocat, avec Ollama local. Groq a seulement servi ponctuellement à préparer des données pendant le développement ; il ne fait pas partie de l'architecture produit ni du pipeline d'analyse. L'absence de fuite reste à vérifier par un audit de configuration et de flux. Voir le périmètre dans le [README](../README.md).
 - **Frugalité** : Zéro coût d'infrastructure. Utilisation d'outils gratuits (Ollama, Kaggle, Python, SQLite) et du matériel existant (Mac M4 24Go).
 - **Traçabilité stricte** : Le modèle ne doit jamais inventer de source. Chaque citation doit pointer vers un fichier, une page et un texte exact.
 - **Transparence Radicale** : L'avocat doit savoir où va son argent. Pas de boîte noire financière.

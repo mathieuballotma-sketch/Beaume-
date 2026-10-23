@@ -72,10 +72,13 @@ Ce n'est pas un échec. C'est le point de départ.
 ### Visée 1 — Aucune donnée client ne quitte la machine
 
 **Périmètre précisé le 21 octobre 2026 :** analyse avec Ollama exécuté localement.
-Les scripts de préparation de l'entraînement peuvent appeler Groq uniquement
-sur des données publiques ou synthétiques autorisées à cet usage, sans pièce
-client. Le script de réécriture privilégie Ollama et demande une confirmation
-explicite avant Groq. Cette déclaration ne vérifie pas le contenu des entrées.
+Groq a servi ponctuellement pendant le développement à préparer des exemples
+à partir de sources juridiques publiques, sans pièce client. Il ne fait pas
+partie de l'architecture produit ni du pipeline d'analyse des dossiers.
+Son support reste présent dans un script de préparation R&D, avec Ollama par
+défaut et une confirmation explicite avant un éventuel appel Groq. Ce support
+historique ne constitue pas une dépendance pour l'utilisateur de Beaume.
+La confirmation du script est déclarative et ne vérifie pas les entrées.
 
 **Mesure prévue :** commencer par des dossiers synthétiques avec marqueurs
 de contrôle ; inventorier les processus, destinations et configurations réseau,

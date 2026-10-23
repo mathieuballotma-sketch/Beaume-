@@ -8,6 +8,14 @@ operationnel sur le jeu indique, pas une validation juridique generale.
 Le modele Ollama est parametrable via --modele (defaut : qwen-beaume-v1).
 Le nom du modele est trace dans le rapport JSON pour eviter de comparer
 deux executions produites par des modeles differents sans le savoir.
+
+Separation score / disputed (version 3 du jeu de test) :
+- Chaque dossier porte un `statut_annotation` : "provisoire" (defaut),
+  "disputed", ou autre.
+- Le score principal est calcule sur les dossiers != "disputed".
+- Les dossiers "disputed" sont rapportes separement, pour information,
+  et exclus du score principal. Cela documente un doute sur
+  l'annotation sans pretendre qu'elle est fausse.
 """
 from __future__ import annotations
 
@@ -39,6 +47,8 @@ from beaume.ports.registre import RegistreExtracteurs
 
 FICHIER_DEFAUT = Path(__file__).resolve().parents[1] / "beaume" / "bench" / "dossiers_test.json"
 MODELE_DEFAUT = "qwen-beaume-v1"
+STATUT_ANNOTATION_DEFAUT = "provisoire"
+STATUT_DISPUTED = "disputed"
 
 
 class _ChercheurTrace:
@@ -72,6 +82,7 @@ def _charger_jeu(chemin: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
         if not isinstance(dossier, dict) or not dossier.get("texte"):
             raise ValueError(f"Dossier {i} invalide : texte manquant.")
         dossier.setdefault("id", f"dossier-{i:03d}")
+        dossier.setdefault("statut_annotation", STATUT_ANNOTATION_DEFAUT)
         charger_references_dossier(dossier, meta.get("code"))
     return meta, dossiers
 
@@ -159,7 +170,6 @@ def _diagnostic_recherche(
         }
 
     candidats_par_chunk = []
-    candidats_transmis: set[ReferenceArticle] = set()
     for index, resultats in enumerate(chercheur.appels, start=1):
         candidats_fts5 = []
         for resultat in resultats:
@@ -180,6 +190,7 @@ def _diagnostic_recherche(
     articles_transmis = pipeline.analyseur._enrichir_articles(
         chercheur.appels, date_reference,
     )
+    candidats_transmis: set[ReferenceArticle] = set()
     for article in articles_transmis:
         version = article.version_a(date_reference)
         if version is None:
@@ -231,6 +242,7 @@ def _evaluer_dossier(
     date_reference: date,
     workdir: Path,
 ) -> dict[str, Any]:
+    statut_annotation = dossier.get("statut_annotation", STATUT_ANNOTATION_DEFAUT)
     gold = charger_references_dossier(dossier, meta.get("code"))
     chercheur = pipeline.analyseur.chercheur
     if isinstance(chercheur, _ChercheurTrace):
@@ -248,6 +260,7 @@ def _evaluer_dossier(
         )
         return {
             "id": dossier["id"],
+            "statut_annotation": statut_annotation,
             "statut_execution": "erreur",
             "type_erreur": type(exc).__name__,
             "duree_s": time.perf_counter() - debut,
@@ -280,6 +293,7 @@ def _evaluer_dossier(
     trouve = gold & predictions
     return {
         "id": dossier["id"],
+        "statut_annotation": statut_annotation,
         "statut_execution": "ok",
         "duree_s": duree,
         "references": [list(x) for x in sorted(gold)],
@@ -289,7 +303,7 @@ def _evaluer_dossier(
         "nb_citations_valides": len(rapport.citations_valides),
         "nb_citations_rejetees": len(rapport.citations_rejetees),
         "nb_citations_valides_hors_must_cite": len(predictions - gold),
-        "rappel_must_cite": len(trouve) / len(gold),
+        "rappel_must_cite": len(trouve) / len(gold) if gold else 0.0,
         "citations_detail": citations_detail,
         "statuts_citations": statuts_citations,
         "modele": rapport.modele_llm,
@@ -325,10 +339,14 @@ def _calculer_agregats(resultats: list[dict[str, Any]]) -> dict[str, Any]:
         ),
         "rappel_macro_must_cite": (
             sum(r["rappel_must_cite"] for r in resultats if "rappel_must_cite" in r)
-            / total_cases
+            / total_cases if total_cases else 0.0
         ),
-        "taux_dossiers_avec_au_moins_une_reference": succes_partiel / total_cases,
-        "taux_dossiers_avec_toutes_les_references": succes_complet / total_cases,
+        "taux_dossiers_avec_au_moins_une_reference": (
+            succes_partiel / total_cases if total_cases else 0.0
+        ),
+        "taux_dossiers_avec_toutes_les_references": (
+            succes_complet / total_cases if total_cases else 0.0
+        ),
         "n_citations_rejetees": sum(r.get("nb_citations_rejetees", 0) for r in resultats),
         "statuts_citations": dict(sorted(statuts_citations.items())),
         "n_citations_valides_hors_must_cite": sum(
@@ -369,20 +387,28 @@ def main() -> int:
             "Date non definie : fournir --date-reference ou _meta.date_reference."
         )
 
+    n_disputed = sum(
+        1 for d in dossiers if d.get("statut_annotation") == STATUT_DISPUTED
+    )
+    n_score = len(dossiers) - n_disputed
+    print(
+        f"Dossiers : {len(dossiers)} (score : {n_score}, disputed : {n_disputed}) "
+        f"| references : {meta.get('statut_annotations', 'non documente')}"
+    )
+    print(f"Corpus   : {DepotSQLite(args.base, lecture_seule=True).compter()} articles "
+          f"| date : {date_reference.isoformat()}")
+    print(f"Modele   : {args.modele}")
+
     depot = DepotSQLite(args.base, lecture_seule=True)
     pipeline = _construire_pipeline(depot, args.modele)
-    print(
-        f"Dossiers : {len(dossiers)} | references : "
-        f"{meta.get('statut_annotations', 'non documente')}"
-    )
-    print(f"Corpus   : {depot.compter()} articles | date : {date_reference.isoformat()}")
-    print(f"Modele   : {args.modele}")
 
     resultats: list[dict[str, Any]] = []
     with tempfile.TemporaryDirectory(prefix="beaume-bench-") as tmp:
         workdir = Path(tmp)
         for i, dossier in enumerate(dossiers, start=1):
-            print(f"[{i}/{len(dossiers)}] {dossier['id']}...", end=" ", flush=True)
+            statut = dossier.get("statut_annotation", STATUT_ANNOTATION_DEFAUT)
+            marqueur = f" [{statut}]" if statut != STATUT_ANNOTATION_DEFAUT else ""
+            print(f"[{i}/{len(dossiers)}] {dossier['id']}{marqueur}...", end=" ", flush=True)
             resultat = _evaluer_dossier(dossier, meta, pipeline, date_reference, workdir)
             resultats.append(resultat)
             if resultat["statut_execution"] == "erreur":
@@ -394,6 +420,16 @@ def main() -> int:
                     f"rejetees={resultat['nb_citations_rejetees']}"
                 )
 
+    resultats_score = [
+        r for r in resultats if r.get("statut_annotation") != STATUT_DISPUTED
+    ]
+    resultats_disputed = [
+        r for r in resultats if r.get("statut_annotation") == STATUT_DISPUTED
+    ]
+    metriques_score = _calculer_agregats(resultats_score)
+    metriques_disputed = _calculer_agregats(resultats_disputed)
+    metriques_globales = _calculer_agregats(resultats)
+
     resultat_final = {
         "type_evaluation": "pipeline_complet_synthetique",
         "jeu": str(args.fichier),
@@ -402,20 +438,43 @@ def main() -> int:
         "corpus": str(args.base),
         "n_articles_corpus": depot.compter(),
         "modele": args.modele,
-        "metriques": _calculer_agregats(resultats),
+        "n_dossiers_score": len(resultats_score),
+        "n_dossiers_disputed": len(resultats_disputed),
+        "metriques_score": metriques_score,
+        "metriques_disputed": metriques_disputed,
+        "metriques_globales_pour_reference": metriques_globales,
         "resultats": resultats,
         "interpretation": (
             "Les must_cite sont des references positives non exhaustives et "
-            "non relues par un juriste. Ces chiffres sont un diagnostic sur "
-            "ce petit jeu synthetique, pas une validation juridique."
+            "non relues par un juriste. Le score principal exclut les dossiers "
+            "marques 'disputed', dont l'annotation est contestee et documentee. "
+            "Ces chiffres sont un diagnostic sur ce petit jeu synthetique, pas "
+            "une validation juridique."
         ),
     }
     sortie = args.sortie or paths.TMP / f"bench_qualite_{args.modele.replace(':', '_')}.json"
     sortie.parent.mkdir(parents=True, exist_ok=True)
     sortie.write_text(json.dumps(resultat_final, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps(resultat_final["metriques"], ensure_ascii=False, indent=2))
+
+    print()
+    print("=== Score principal (dossiers non disputed) ===")
+    print(f"  Dossiers              : {metriques_score['n_dossiers']}")
+    print(f"  Rappel micro must_cite: {metriques_score['rappel_micro_must_cite']:.1%}")
+    print(f"  Rappel macro must_cite: {metriques_score['rappel_macro_must_cite']:.1%}")
+    print(f"  Retrieval must_cite   : {metriques_score['rappel_micro_retrieval_must_cite']:.1%}")
+    print(f"  Citations rejetees    : {metriques_score['n_citations_rejetees']}")
+
+    if resultats_disputed:
+        print()
+        print("=== Dossiers disputed (non comptes dans le score) ===")
+        print(f"  Dossiers              : {metriques_disputed['n_dossiers']}")
+        print(f"  Rappel micro must_cite: {metriques_disputed['rappel_micro_must_cite']:.1%}")
+        print(f"  Rappel macro must_cite: {metriques_disputed['rappel_macro_must_cite']:.1%}")
+        print(f"  Retrieval must_cite   : {metriques_disputed['rappel_micro_retrieval_must_cite']:.1%}")
+
+    print()
     print(f"Rapport : {sortie}")
-    return 1 if resultat_final["metriques"]["n_erreurs_execution"] else 0
+    return 1 if metriques_score["n_erreurs_execution"] else 0
 
 
 if __name__ == "__main__":

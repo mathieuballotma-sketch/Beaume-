@@ -3,24 +3,21 @@
 Assistant juridique pour avocats francais, concu pour l'analyse locale des dossiers.
 
 L'analyse des dossiers clients est concue pour fonctionner localement, avec
-Ollama execute sur votre machine. Les documents clients sont exclus des
-traitements externes de preparation des donnees d'entrainement.
+Ollama execute sur votre machine. Groq ne fait pas partie de l'architecture
+produit : son utilisation n'est pas necessaire pour analyser un dossier.
 
 ### Confidentialite : perimetre et limites
 
 - Analyse : utiliser une instance Ollama locale et des modeles executes
   localement. La configuration effective et les flux reseau restent a auditer ;
   le prototype ne constitue pas une garantie d'absence de fuite.
-- Entrainement : certains scripts de preparation peuvent utiliser Groq,
-  exclusivement pour des donnees publiques ou synthetiques autorisees a cet usage.
-  Une publication publique ne dispense pas de verifier les donnees personnelles
-  residuelles et les conditions de reutilisation.
-- `scripts/reecrire_faits.py` utilise Ollama par defaut. Groq exige les options
-  `--fournisseur groq --confirmer-donnees-publiques-ou-synthetiques`.
-  Cette confirmation est declarative : elle ne detecte pas les documents clients.
-- Le script enregistre le fournisseur, le modele, l'empreinte du fichier source
-  et la declaration dans chaque nouvelle sortie. Il ne verifie pas la pertinence
-  juridique des exemples. Les anciennes sorties ne sont pas modifiees.
+- Historique de developpement : Groq a servi ponctuellement a preparer des
+  exemples d'entrainement a partir de sources juridiques publiques, sans dossier
+  client. Cet usage ne constitue ni un service de Beaume ni une dependance de
+  son pipeline d'analyse.
+- Le support Groq subsiste dans `scripts/reecrire_faits.py`, outil de preparation
+  hors pipeline. Il est optionnel et desactive par defaut au profit d'Ollama.
+  Sa presence dans le depot ne signifie pas qu'il est utilise par l'application.
 
 Les telechargements de corpus et de modeles sont distincts de l'analyse des
 pieces. Ne pas placer de documents clients dans les entrees des scripts
@@ -117,7 +114,7 @@ juridique du moteur ni les labels synthetiques d'entrainement.
     scripts/
       telecharger_corpus.py        Charge LEGI (25 767 articles, 5 codes)
       analyser_dossier.py          Pipeline complet dossier -> Markdown
-      reecrire_faits.py            Reecriture style client (Groq + Ollama)
+      reecrire_faits.py            Outil de preparation R&D, hors pipeline d'analyse
       construire_dataset_entrainement.py  Paires (anchor, positive)
       split_train_test.py          Split par id_fait
       fusionner_faits.py           Fusion dedoublonnee

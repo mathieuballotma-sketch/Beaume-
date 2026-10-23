@@ -14,6 +14,52 @@ expériences précises indiquées.
 > n'était pas accessible pendant cette vérification. La suite logicielle
 > actuelle a, elle, été relancée : 319 tests passent et 2 sont ignorés.
 
+## Mesure gelée du 20 octobre 2026 (Phase 1)
+
+**Statut** : mesure de référence pour la Phase 2 (élargissement du jeu).
+
+**Corpus** : `data/vector/legi_full_v2.sqlite`
+- SHA256 : `3e86c3931e8d6026904b85931701edecc93ab38c73eae35d1158ee75bdd37a30`
+- 43 794 articles, 92 767 versions, 22 269 articles multi-versions
+- 5 statuts : `en_vigueur` 25 652, `abroge` 20 110, `modifie` 46 067, `futur` 482, `inconnu` 456
+- 5 codes : travail, civil, sécurité sociale, consommation, procédure civile
+- Reconstruction depuis `data/vector/legi_dila_v2/legi_dila.sqlite` (DILA, 468 archives, Licence Ouverte 2.0)
+
+**Corpus v1 (référence historique)** : `data/vector/legi_full.sqlite`
+- SHA256 : `033034f674846ac8a3a23be22e7a127a5aabeb9ed68cfe2514aa14fce4ab4abb`
+- 25 767 articles, 25 767 versions, toutes `en_vigueur`
+
+**Modèle** : `qwen2.5:7b-instruct` (le modèle de base, pas le finetuné `qwen-beaume-v1`)
+
+**Jeu de test** : `beaume/bench/dossiers_test.json` version 3
+- 5 dossiers, dont 1 marqué `disputed` (BE-LECO-002)
+- `limite_articles=10` par chunk, `limite_candidats=10` au total
+- Annotations `provisoires_non_validees_par_un_juriste`
+
+**Résultat du score principal** (dossiers `provisoire`, non `disputed`) :
+- 4 dossiers
+- Rappel micro `must_cite` : **100,0 %** (4/4)
+- Rappel macro `must_cite` : 100,0 %
+- Retrieval `must_cite` : 100,0 %
+- Citations rejetées : 0
+- Erreurs d'exécution : 0
+- Durée moyenne : 5,8 s/dossier
+
+**Résultat des dossiers `disputed`** (pour information, non comptés) :
+- 1 dossier (BE-LECO-002)
+- Rappel micro `must_cite` : 0,0 % (0/2)
+- Retrieval `must_cite` : 0,0 %
+
+**Interprétation** :
+- Le score principal 4/4 est une baseline mesurable sur 4 dossiers non contestés. Ce n'est pas une validation juridique : les annotations sont provisoires, le jeu est petit, et 4 dossiers ne permettent pas de conclure.
+- BE-LECO-002 est marqué `disputed` : L1233-61 (seuil PSE : 50 salariés et 10 licenciements dans 30 jours) contient les nuggets pour répondre à la question du dossier (6 salariés, 2 licenciements, pas de PSE). Les `must_cite` annotés (L1233-1, L1233-2) sont des articles généraux qui ne répondent pas à la question du PSE, et ils ne sont pas récupérés par FTS5 même avec `limite_articles=10`. BGE-M3 et 2/3 LLM choisissent L1233-61. En attente de relecture par un juriste.
+- Le score disputed (0/2) documente un échec mesuré, pas une erreur de Beaume : le modèle ne peut pas trouver des articles qui ne sont pas les bons.
+
+**Fichiers de référence** :
+- `docs/GEL.md` : liste des artefacts gelés (corpus, jeu, métriques) avec hashes
+- `data/logs/bench_qualite_v2_7b_l10_gel.json` : rapport JSON de cette mesure
+- Commande : `.venv/bin/python scripts/bench_qualite.py --modele qwen2.5:7b-instruct --base data/vector/legi_full_v2.sqlite --sortie data/logs/bench_qualite_v2_7b_l10_gel.json`
+
 ## Défauts confirmés et corrections dans le code
 
 - `scripts/bench_recherche.py` mesurait auparavant une auto-recherche : les mots
@@ -62,133 +108,3 @@ Commande :
 
 ```bash
 .venv/bin/python scripts/bench_recherche.py --sortie /tmp/beaume_bench_recherche.json
-```
-
-Résultat observé avec `legi_full.sqlite` : 5 requêtes synthétiques, 6 références
-`must_cite`, FTS5 OR/BM25, MRR 0,600 ; Recall@1 micro 33,3 % (macro 40 %),
-Recall@5 66,7 % (macro 80 %), Recall@10 66,7 % (macro 80 %). Le taux de requêtes
-avec au moins une référence retrouvée est respectivement 40 %, 80 % et 80 %.
-
-Les annotations sont marquées provisoires et non validées par un juriste. Ce
-résultat est un diagnostic reproductible sur cinq exemples, pas une preuve de
-pertinence juridique ni une comparaison de modèles.
-
-### Pipeline complet avec Qwen 2.5 7B local
-
-Commande :
-
-```bash
-.venv/bin/python scripts/bench_qualite.py --sortie /tmp/beaume_bench_qualite.json
-```
-
-Résultat observé sur les mêmes 5 dossiers : 0 erreur d'exécution, 4/6
-références `must_cite` retrouvées (rappel micro 66,7 %, macro 80 %), 4/5
-dossiers avec au moins une référence et 4/5 avec toutes leurs références
-attendues. Le dossier `BE-LECO-002` avait deux références attendues et aucune
-n'a été retrouvée ; les quatre autres dossiers ont chacun leur référence
-attendue. Aucune citation n'a été rejetée par le vérificateur. La génération
-Qwen 2.5 7B a pris en moyenne 29,3 secondes par dossier sur cette machine.
-
-Le retrieval seul et le pipeline complet obtiennent ici le même rappel
-`must_cite`@5 (4/6). Sur ce petit jeu, le dossier manqué est déjà absent des
-10 premiers résultats lexicaux : le modèle génératif n'explique donc pas cet
-échec observé. Cela n'identifie pas la cause juridique du classement. Le
-nombre « zéro citation hors `must_cite` » n'est pas une mesure de précision,
-car les annotations ne sont pas exhaustives.
-
-### Dataset LLM présent sur le disque
-
-L'audit historique de `data/entrainement/train_llm.jsonl` a lu 50 lignes :
-
-- 50/50 réponses contiennent le champ `statut`, hors schéma de sortie du modèle ;
-- chaque prompt contient 5 candidats et chaque réponse une citation ;
-- les 50 lignes portent `genere_auto_filtre`, statut qui n'est pas une preuve
-  de validation ;
-- aucun manifeste n'est présent pour relier les lignes à leur source, date,
-  graine ou modèle ;
-- aucune validation par un juriste n'est documentée.
-
-Le script retourne donc une erreur structurelle pour les 50 lignes. Il ne juge
-pas leur pertinence juridique. Ce dataset ne doit pas être considéré comme
-prêt pour un fine-tuning du schéma actuel.
-
-### Dry-run du constructeur de paires embedder
-
-Sans écrire ni remplacer de fichier, le constructeur corrigé a été exécuté sur
-les 652 faits de `faits_clients_propres.jsonl` et le corpus v1 : 1 045 paires
-résolues ; 227 références non résolues, dont 93 numéros absents du corpus et
-134 sans version applicable à la date du fait. Aucune référence ambiguë ni
-date invalide n'a été trouvée dans cet échantillon.
-
-Ces références non résolues ne sont pas des négatifs : le corpus v1 ne conserve
-qu'une version par article et ne suffit pas à reconstituer l'historique. Le
-constructeur n'a pas réécrit les Parquet présents. Il faut réexaminer le
-corpus historique avant de régénérer et d'entraîner.
-
-Le split existant sépare bien les `id_fait` entre train et test (0 fait partagé
-sur les fichiers inspectés). Il partage toutefois 29 numéros d'article entre
-les deux côtés. Il évalue donc des faits nouveaux associés à des articles déjà
-vus, et non la généralisation à des articles absents du train. Ce sont deux
-questions d'évaluation différentes ; le rapport de test doit indiquer laquelle
-il mesure.
-
-### Corpus de lois
-
-Le corpus v1 contient 25 767 articles et 25 767 versions ; les versions
-présentes sont toutes au statut `en_vigueur`. Il ne permet donc pas de vérifier
-les formulations historiques applicables aux dates anciennes des faits.
-`data/vector/legi_full_v2.sqlite` existe, mais ne contient actuellement qu'une
-table `versions` vide (0 ligne) ; ce n'est pas un corpus utilisable par le
-pipeline.
-
-## Ce qui reste non démontré ou bloqué
-
-- Les cinq dossiers de recherche n'ont pas de références exhaustives
-  indépendamment vérifiées. Recall@K peut sous-estimer les bons résultats non
-  annotés et ne renseigne pas sur les citations erronées.
-- Les faits automatiques associés à leur article source ne prouvent pas que
-  cet article est juridiquement applicable aux faits inventés. Un autre LLM
-  juge peut aider au tri, mais ne constitue pas une validation indépendante.
-- Le benchmark de bout en bout a été exécuté avec Qwen 2.5 7B sur cinq dossiers
-  synthétiques. Il n'y a pas d'évaluation sur des dossiers clients, et cinq
-  exemples non revus ne démontrent ni la fiabilité ni l'absence d'hallucination
-  en usage réel.
-- La base v2 issue d'AgentPublic/legi n'est pas intégrée. Le fichier
-  `data/vector/legi_full_v2.sqlite` ne constitue pas une base validée ; le
-  script de génération s'arrête désormais clairement au lieu de simuler une
-  réussite.
-- Les anciens scores issus du self-retrieval ne doivent pas être présentés
-  comme Recall@K sur des faits.
-
-## Protocole nécessaire avant de revendiquer une validation
-
-1. Constituer un jeu public de faits issus de décisions distinctes et annoter
-   les articles réellement pertinents, en distinguant les citations de
-   procédure, les moyens des parties et les motifs retenus par la juridiction.
-2. Garder une provenance par exemple : décision, dates, article dans la version
-   applicable, méthode d'annotation et état de revue. Un LLM juge reste un
-   signal de triage.
-3. Geler le jeu de test avant de modifier les prompts, le corpus ou le modèle.
-   Grouper par décision/fait pour empêcher les paraphrases d'une même affaire
-   de traverser les partitions.
-4. Comparer sur les mêmes requêtes FTS5, embedder non entraîné, embedder
-   entraîné et méthode hybride. Rapporter Recall@5/10, MRR, couverture et taux
-   d'abstention ; calculer précision seulement si les références sont
-   exhaustives.
-5. Séparer l'évaluation du retrieval de celle du pipeline complet : validité
-   des citations, provenance fichier/page, version temporelle, erreurs
-   d'extraction et abstention.
-6. Publier le nombre d'exemples, les intervalles d'incertitude et les versions
-   des données/modèles. Tant qu'aucun professionnel du droit n'a revu les
-   références, conclure « test technique préliminaire », pas « fiable ».
-
-## Tests logiciels
-
-Les tests unitaires dédiés aux métriques, au rapprochement des références, au
-mode lecture seule et à la structure des exemples vérifient des invariants de
-code. À la mise à jour du 2026-10-19, la suite complète `.venv/bin/pytest -q`
-donne 319 tests réussis et 2 ignorés. `compileall` et `git diff --check`
-passent également. Ces résultats ne démontrent pas la validité juridique des
-étiquettes ni la qualité du modèle.
-Ces vérifications ne démontrent pas la validité juridique des étiquettes ni la
-qualité du modèle.

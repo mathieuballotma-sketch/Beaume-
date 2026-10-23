@@ -2,6 +2,12 @@
 
 Derniere mise a jour : 2026-10-14
 
+> Note historique, pas un plan de reprise actuel. Clarification du 21 octobre
+> 2026 : l'usage de Groq ci-dessous correspond a une preparation ponctuelle de
+> donnees de developpement. Groq ne fait pas partie de l'architecture produit
+> ni du pipeline d'analyse. Les chiffres et prochaines etapes ci-dessous
+> decrivent l'etat du 14 octobre et doivent etre reexamines avant utilisation.
+
 ## Etat Git
 
 Dernier commit : 748966b
