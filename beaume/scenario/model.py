@@ -1,4 +1,4 @@
-"""Contrat typé des scénarios fictifs Beaume (schema_version 0.2).
+"""Contrat typé des scénarios fictifs Beaume (schema_version 0.3).
 
 Trois niveaux strictement séparés :
 - réalité fictive interne : acteurs et événements qui ont eu lieu ;

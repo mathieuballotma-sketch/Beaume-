@@ -1,0 +1,153 @@
+{
+  "rapport_id": "rapport:BEAUME-SC-0002:v1",
+  "scenario_id": "BEAUME-SC-0002",
+  "scenario_version": 1,
+  "schema_version": "0.3",
+  "empreinte_scenario": "d1936e624ce9e132014c28dab78a2d07a6c728a6e8d16fdb334635f0cb2938b8",
+  "genere_le": "2026-10-23T10:37:34.539441Z",
+  "controles": [
+    {
+      "controle_id": "structure.ids_uniques",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:actor:salarie",
+        "scn:actor:employeur",
+        "scn:event:embauche",
+        "scn:event:licenciement",
+        "scn:doc:saisine",
+        "scn:doc:conclusions_demandeur",
+        "src:decision:62a97872a0285a05e58b8e1a",
+        "scn:assert:saisine:1",
+        "scn:assert:conclusions:1",
+        "scn:prop:licenciement_sans_cause"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.references_resolues",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:actor:salarie",
+        "scn:actor:employeur",
+        "scn:actor:salarie",
+        "scn:actor:employeur",
+        "scn:actor:salarie",
+        "scn:actor:salarie",
+        "scn:actor:salarie",
+        "scn:actor:salarie",
+        "scn:doc:conclusions_demandeur"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.provenance_complete",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:actor:salarie",
+        "scn:actor:employeur",
+        "scn:event:embauche",
+        "scn:event:licenciement",
+        "scn:doc:saisine",
+        "scn:assert:saisine:1",
+        "scn:doc:conclusions_demandeur",
+        "scn:assert:conclusions:1",
+        "scn:prop:licenciement_sans_cause"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.dates_valides",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:event:embauche",
+        "scn:event:licenciement",
+        "scn:doc:saisine",
+        "scn:doc:conclusions_demandeur"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.declarations_champs",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:doc:saisine.DATE_ACTUELLE",
+        "scn:doc:saisine.EXPOSE_FAITS",
+        "scn:doc:saisine.LIEU",
+        "scn:doc:saisine.MONTANT",
+        "scn:doc:saisine.NOM_DEFENDEUR",
+        "scn:doc:saisine.NOM_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.AVOCAT_DEFENDEUR",
+        "scn:doc:conclusions_demandeur.AVOCAT_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.DATE_ACTUELLE",
+        "scn:doc:conclusions_demandeur.DISCUSSION",
+        "scn:doc:conclusions_demandeur.DISPOSITIF",
+        "scn:doc:conclusions_demandeur.FAITS",
+        "scn:doc:conclusions_demandeur.NOM_DEFENDEUR",
+        "scn:doc:conclusions_demandeur.NOM_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.VILLE"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.valeurs_champs",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [
+        "scn:doc:saisine.NOM_DEMANDEUR",
+        "scn:doc:saisine.NOM_DEFENDEUR",
+        "scn:doc:saisine.EXPOSE_FAITS",
+        "scn:doc:saisine.MONTANT",
+        "scn:doc:saisine.LIEU",
+        "scn:doc:saisine.DATE_ACTUELLE",
+        "scn:doc:conclusions_demandeur.NOM_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.NOM_DEFENDEUR",
+        "scn:doc:conclusions_demandeur.AVOCAT_DEMANDEUR",
+        "scn:doc:conclusions_demandeur.AVOCAT_DEFENDEUR",
+        "scn:doc:conclusions_demandeur.VILLE",
+        "scn:doc:conclusions_demandeur.FAITS",
+        "scn:doc:conclusions_demandeur.DISCUSSION",
+        "scn:doc:conclusions_demandeur.DISPOSITIF",
+        "scn:doc:conclusions_demandeur.DATE_ACTUELLE"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "scenario.acteurs_roles_coherents",
+      "version_regle": "2",
+      "categorie": "scenario",
+      "objets_controles": [
+        "scn:actor:salarie",
+        "scn:actor:employeur"
+      ],
+      "resultat": "reussi",
+      "motif": ""
+    },
+    {
+      "controle_id": "structure.calculs_valides",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [],
+      "resultat": "non_applicable",
+      "motif": "aucun calcul defini"
+    },
+    {
+      "controle_id": "structure.coherence_dates_calculees",
+      "version_regle": "2",
+      "categorie": "structure",
+      "objets_controles": [],
+      "resultat": "non_applicable",
+      "motif": "aucun calcul defini"
+    }
+  ]
+}

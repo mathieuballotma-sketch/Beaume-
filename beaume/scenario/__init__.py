@@ -1,4 +1,4 @@
-"""Scenarios fictifs Beaume : contrat type et validation structurelle (schema 0.2)."""
+"""Scenarios fictifs Beaume : contrat type et validation structurelle (schema 0.3)."""
 from beaume.scenario.champs import (
     AttributReference,
     MotifAbsence,

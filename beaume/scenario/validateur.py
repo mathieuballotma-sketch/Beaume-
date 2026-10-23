@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from pathlib import Path
 from datetime import date, datetime, timezone
 from decimal import Decimal, InvalidOperation
 
@@ -35,7 +37,17 @@ from beaume.scenario.resolution import (
 from beaume.scenario.model import ModeProvenance, Scenario
 from beaume.scenario.rapport import Controle, RapportValidation, ResultatControle
 
-VERSION_REGLE = "1"
+# "2" : formats litteraux stricts, dates_valides effectif,
+# auteur != destinataire (audit lot F, 2026-10-23).
+VERSION_REGLE = "2"
+
+# Hypotheses de contrat (a confirmer par Mathieu) :
+# montant = chiffres ASCII, point decimal, 2 decimales max, >= 0, 15 chiffres max ;
+# entier = chiffres ASCII avec signe '-' optionnel ; date = AAAA-MM-JJ.
+_RE_MONTANT = re.compile(r"\A[0-9]{1,15}(\.[0-9]{1,2})?\Z")
+_RE_ENTIER = re.compile(r"\A-?[0-9]{1,9}\Z")
+_RE_DATE = re.compile(r"\A[0-9]{4}-[0-9]{2}-[0-9]{2}\Z")
+_RE_BALISE = re.compile(r"\[([A-Z0-9_]+)\]")
 
 CONTROLES_OBLIGATOIRES: set[str] = {
     "structure.ids_uniques",
@@ -89,7 +101,7 @@ def _c(controle_id: str, resultat: ResultatControle, objets: list[str],
     return Controle(
         controle_id=controle_id,
         version_regle=VERSION_REGLE,
-        categorie="structure" if controle_id.startswith("structure.") else "scenario",
+        categorie=controle_id.split(".", 1)[0],
         objets_controles=objets,
         resultat=resultat,
         motif=motif,
@@ -265,9 +277,19 @@ def _provenance_complete(scenario: Scenario) -> Controle:
 
 
 def _dates_valides(scenario: Scenario) -> Controle:
-    objets = [e.event_id for e in scenario.events] + [
-        d.document_id for d in scenario.documents
+    """Aucune date d'evenement ou de document posterieure a created_at."""
+    limite = scenario.created_at.valeur
+    objets: list[str] = []
+    echecs: list[str] = []
+    datees = [(e.event_id, e.date.valeur) for e in scenario.events] + [
+        (d.document_id, d.date.valeur) for d in scenario.documents
     ]
+    for oid, d in datees:
+        objets.append(oid)
+        if d > limite:
+            echecs.append(f"{oid}: {d.isoformat()} posterieure a created_at {limite.isoformat()}")
+    if echecs:
+        return _c("structure.dates_valides", ResultatControle.ECHOUE, objets, " ; ".join(echecs))
     return _c("structure.dates_valides", ResultatControle.REUSSI, objets)
 
 
@@ -336,6 +358,13 @@ def _valeurs_champs(scenario: Scenario) -> Controle:
                 continue
             if isinstance(valeur, ValeurLitterale):
                 try:
+                    brut = valeur.valeur
+                    if attendu is TypeChamp.MONTANT and not _RE_MONTANT.match(brut):
+                        raise ValueError("format montant attendu : 1234 ou 1234.56")
+                    if attendu is TypeChamp.ENTIER and not _RE_ENTIER.match(brut):
+                        raise ValueError("format entier attendu : chiffres ASCII")
+                    if attendu is TypeChamp.DATE and not _RE_DATE.match(brut):
+                        raise ValueError("format date attendu : AAAA-MM-JJ")
                     if attendu is TypeChamp.MONTANT:
                         v = Decimal(valeur.valeur)
                         if not v.is_finite():
@@ -415,6 +444,9 @@ def _acteurs_roles_coherents(scenario: Scenario) -> Controle:
         motifs.append(f"plusieurs demandeurs : {[a.actor_id for a in demandeurs]}")
     if len(defendeurs) > 1:
         motifs.append(f"plusieurs defendeurs : {[a.actor_id for a in defendeurs]}")
+    for d in scenario.documents:
+        if d.destinataire is not None and d.destinataire == d.auteur:
+            motifs.append(f"{d.document_id}: auteur == destinataire ({d.auteur})")
     if motifs:
         return _c(
             "scenario.acteurs_roles_coherents",
@@ -514,6 +546,40 @@ def _coherence_dates_calculees(scenario: Scenario) -> Controle:
         ResultatControle.REUSSI,
         objets,
     )
+
+
+def verifier_templates(scenario: Scenario, racine: Path) -> Controle:
+    """Controle documentaire (prefiguration F-b1, hors CONTROLES_OBLIGATOIRES).
+
+    Pour chaque document mode=template : chemin sous
+    data/scenarios/structures, fichier existant, et parite exacte entre
+    les balises [XXX] du template et les cles de `champs`.
+    """
+    base = (racine / "data" / "scenarios" / "structures").resolve()
+    objets: list[str] = []
+    echecs: list[str] = []
+    for d in scenario.documents:
+        if d.contenu.mode != "template":
+            continue
+        objets.append(d.document_id)
+        chemin = (racine / d.contenu.chemin).resolve()
+        if base not in chemin.parents:
+            echecs.append(f"{d.document_id}: chemin hors structures {d.contenu.chemin!r}")
+            continue
+        if not chemin.is_file():
+            echecs.append(f"{d.document_id}: template introuvable {d.contenu.chemin!r}")
+            continue
+        balises = set(_RE_BALISE.findall(chemin.read_text(encoding="utf-8")))
+        champs = set(d.contenu.champs)
+        if balises - champs:
+            echecs.append(f"{d.document_id}: balises sans champ {sorted(balises - champs)}")
+        if champs - balises:
+            echecs.append(f"{d.document_id}: champs sans balise {sorted(champs - balises)}")
+    if not objets:
+        return _c("generation.templates_coherents", ResultatControle.NON_APPLICABLE,
+                  [], "aucun document template")
+    res = ResultatControle.ECHOUE if echecs else ResultatControle.REUSSI
+    return _c("generation.templates_coherents", res, objets, " ; ".join(echecs))
 
 
 def valider_scenario(scenario: Scenario) -> RapportValidation:
