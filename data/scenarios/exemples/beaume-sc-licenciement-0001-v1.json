@@ -1,0 +1,144 @@
+{
+  "schema_version": "0.3",
+  "scenario_id": "BEAUME-SC-0002-v1",
+  "scenario_version": 1,
+  "partition": "dev",
+  "domain": "licenciement_contestation",
+  "language": "fr",
+  "created_at": "2026-10-23",
+  "sources": [
+    {
+      "source_id": "src:decision:62a97872a0285a05e58b8e1a",
+      "kind": "decision_judiciaire",
+      "juridiction": "Cour de cassation, chambre sociale",
+      "date": "2022-06-15",
+      "note": "inspiration generale ; aucune valeur n'en est reprise directement"
+    }
+  ],
+  "actors": [
+    {
+      "actor_id": "scn:actor:salarie",
+      "display_name": "Mme Alice Dupont",
+      "roles": ["demandeur", "salarie"],
+      "provenance": {"mode": "cree", "regle": "identite fictive", "parametres": {}}
+    },
+    {
+      "actor_id": "scn:actor:employeur",
+      "display_name": "SARL Exemple Conseil",
+      "roles": ["defendeur", "employeur"],
+      "provenance": {"mode": "cree", "regle": "identite fictive", "parametres": {}}
+    }
+  ],
+  "events": [
+    {
+      "event_id": "scn:event:embauche",
+      "date": {"valeur": "2019-03-04", "precision": "jour"},
+      "description": "Embauche de Mme Dupont par SARL Exemple Conseil",
+      "actors_impliques": ["scn:actor:salarie", "scn:actor:employeur"],
+      "provenance": {
+        "mode": "cree",
+        "regle": "date choisie dans une plage acceptable",
+        "parametres": {"plage": ["2018-01-01", "2020-12-31"]}
+      }
+    },
+    {
+      "event_id": "scn:event:licenciement",
+      "date": {"valeur": "2025-11-14", "precision": "jour"},
+      "description": "Licenciement pour motif personnel",
+      "actors_impliques": ["scn:actor:salarie", "scn:actor:employeur"],
+      "provenance": {"mode": "cree", "regle": "date choisie", "parametres": {}}
+    }
+  ],
+  "documents": [
+    {
+      "document_id": "scn:doc:saisine",
+      "titre": "Requete introductive d'instance",
+      "date": {"valeur": "2026-01-20", "precision": "jour"},
+      "nature": "saisine",
+      "auteur": "scn:actor:salarie",
+      "assertions": [
+        {
+          "assertion_id": "scn:assert:saisine:1",
+          "contenu": "Le salarie a ete embauche le 4 mars 2019",
+          "portee": "fait_allegue",
+          "acteur_source": "scn:actor:salarie",
+          "provenance": {"mode": "cree", "regle": "assertion construite pour la fiction", "parametres": {}}
+        }
+      ],
+      "contenu": {
+        "mode": "template",
+        "chemin": "data/scenarios/structures/saisine_prud_hommes.md",
+        "champs": {
+          "NOM_DEMANDEUR": {"type": "reference", "cible": "scn:actor:salarie", "attribut": "display_name"},
+          "NOM_DEFENDEUR": {"type": "reference", "cible": "scn:actor:employeur", "attribut": "display_name"},
+          "EXPOSE_FAITS":   {"type": "litteral", "valeur": "Le salarie a ete embauche le 4 mars 2019 puis licencie le 14 novembre 2025."},
+          "MONTANT":        {"type": "litteral", "valeur": "25000.00"},
+          "LIEU":           {"type": "absent", "motif": "non_renseigne_source"},
+          "DATE_ACTUELLE":  {"type": "reference", "cible": "scn:doc:saisine", "attribut": "date"}
+        },
+        "declarations": {
+          "NOM_DEMANDEUR": "texte",
+          "NOM_DEFENDEUR": "texte",
+          "EXPOSE_FAITS": "texte",
+          "MONTANT": "montant",
+          "LIEU": "texte",
+          "DATE_ACTUELLE": "date"
+        }
+      },
+      "provenance": {"mode": "cree", "regle": "piece procedurale fictive", "parametres": {}}
+    },
+    {
+      "document_id": "scn:doc:conclusions_demandeur",
+      "titre": "Conclusions du demandeur",
+      "date": {"valeur": "2026-04-10", "precision": "jour"},
+      "nature": "conclusions",
+      "auteur": "scn:actor:salarie",
+      "assertions": [
+        {
+          "assertion_id": "scn:assert:conclusions:1",
+          "contenu": "Le licenciement est sans cause reelle et serieuse",
+          "portee": "argument_juridique",
+          "acteur_source": "scn:actor:salarie",
+          "provenance": {"mode": "cree", "regle": "moyen fictif du demandeur", "parametres": {}}
+        }
+      ],
+      "contenu": {
+        "mode": "template",
+        "chemin": "data/scenarios/structures/conclusions_prud.md",
+        "champs": {
+          "NOM_DEMANDEUR": {"type": "reference", "cible": "scn:actor:salarie", "attribut": "display_name"},
+          "NOM_DEFENDEUR": {"type": "reference", "cible": "scn:actor:employeur", "attribut": "display_name"},
+          "AVOCAT_DEMANDEUR": {"type": "absent", "motif": "non_defini_scenario"},
+          "AVOCAT_DEFENDEUR": {"type": "absent", "motif": "non_defini_scenario"},
+          "VILLE":           {"type": "absent", "motif": "non_defini_scenario"},
+          "FAITS":           {"type": "litteral", "valeur": "Le salarie a ete embauche le 4 mars 2019 puis licencie le 14 novembre 2025."},
+          "DISCUSSION":      {"type": "litteral", "valeur": "Le licenciement est depourvu de cause reelle et serieuse."},
+          "DISPOSITIF":      {"type": "litteral", "valeur": "Condamner l'employeur a verser 25000.00 euros au salarie."},
+          "DATE_ACTUELLE":   {"type": "reference", "cible": "scn:doc:conclusions_demandeur", "attribut": "date"}
+        },
+        "declarations": {
+          "NOM_DEMANDEUR": "texte",
+          "NOM_DEFENDEUR": "texte",
+          "AVOCAT_DEMANDEUR": "texte",
+          "AVOCAT_DEFENDEUR": "texte",
+          "VILLE": "texte",
+          "FAITS": "texte",
+          "DISCUSSION": "texte",
+          "DISPOSITIF": "texte",
+          "DATE_ACTUELLE": "date"
+        }
+      },
+      "provenance": {"mode": "cree", "regle": "piece procedurale fictive", "parametres": {}}
+    }
+  ],
+  "propositions_juridiques": [
+    {
+      "proposition_id": "scn:prop:licenciement_sans_cause",
+      "type": "qualification",
+      "contenu": "Le licenciement est qualifie de sans cause reelle et serieuse dans les conclusions du demandeur",
+      "statut_validation": "non_evaluee",
+      "references_invoquees": ["scn:doc:conclusions_demandeur"],
+      "provenance": {"mode": "cree", "regle": "qualification fictive du demandeur", "parametres": {}}
+    }
+  ]
+}
