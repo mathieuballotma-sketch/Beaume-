@@ -11,7 +11,7 @@ from beaume.scenario import (
     Scenario,
     valider_scenario,
 )
-from beaume.scenario.validateur import empreinte_scenario
+from beaume.scenario.validateur import VERSION_REGLE, empreinte_scenario
 
 
 def _prov():
@@ -366,7 +366,7 @@ def test_tous_reussi_accepte():
     sc = _scenario()
     r = valider_scenario(sc)
     r.controles = [
-        Controle(controle_id=cid, version_regle="1", categorie="structure",
+        Controle(controle_id=cid, version_regle=VERSION_REGLE, categorie="structure",
                  objets_controles=[], resultat=ResultatControle.REUSSI, motif="")
         for cid in CONTROLES_OBLIGATOIRES
     ]

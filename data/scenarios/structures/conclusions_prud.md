@@ -1,12 +1,12 @@
 **CONCLUSIONS**
 
 **POUR :**
-[NOM_DEFENDEUR]
-Ayant pour Avocat : Maître [AVOCAT_DEFENDEUR]
-
-**CONTRE :**
 [NOM_DEMANDEUR]
 Ayant pour Avocat : Maître [AVOCAT_DEMANDEUR]
+
+**CONTRE :**
+[NOM_DEFENDEUR]
+Ayant pour Avocat : Maître [AVOCAT_DEFENDEUR]
 
 **PLAISE AU CONSEIL DE PRUD'HOMMES DE [VILLE]**
 

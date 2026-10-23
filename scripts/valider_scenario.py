@@ -5,20 +5,32 @@ import json
 import sys
 from pathlib import Path
 
-from beaume.config.paths import DATA
-from beaume.scenario import (
+# Importer le paquet de l'arbre qui contient ce script, pas une
+# installation editable d'un autre arbre (sinon le rapport est ecrit
+# dans le mauvais depot).
+RACINE = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(RACINE))
+
+from pydantic import ValidationError  # noqa: E402
+
+from beaume.config.paths import DATA  # noqa: E402
+from beaume.scenario import (  # noqa: E402
     CONTROLES_OBLIGATOIRES,
     CONTROLES_OBLIGATOIRES_AVEC_CALCULS,
     Scenario,
     valider_scenario,
 )
-from beaume.scenario.rapport import ResultatControle
+from beaume.scenario.rapport import ResultatControle  # noqa: E402
 
 RAPPORTS = DATA / "scenarios" / "rapports"
 
 
 def main(chemin: Path) -> int:
-    scenario = Scenario(**json.loads(chemin.read_text(encoding="utf-8")))
+    try:
+        scenario = Scenario(**json.loads(chemin.read_text(encoding="utf-8")))
+    except (OSError, json.JSONDecodeError, ValidationError) as exc:
+        print(f"Scenario illisible ou invalide : {exc}", file=sys.stderr)
+        return 3
     rapport = valider_scenario(scenario)
     RAPPORTS.mkdir(parents=True, exist_ok=True)
     sortie = RAPPORTS / f"{scenario.scenario_id}_v{scenario.scenario_version}.json"

@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ResultatControle(str, Enum):
@@ -16,6 +16,7 @@ class ResultatControle(str, Enum):
 
 
 class Controle(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     controle_id: str
     version_regle: str
     categorie: Literal["structure", "scenario", "generation", "juridique"]
@@ -25,6 +26,7 @@ class Controle(BaseModel):
 
 
 class RapportValidation(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     rapport_id: str
     scenario_id: str
     scenario_version: int
@@ -52,9 +54,8 @@ class RapportValidation(BaseModel):
         )
         if empreinte_scenario(scenario) != self.empreinte_scenario:
             return False
-        requis = (
-            controles_requis(scenario) if obligatoires is None else obligatoires
-        )
+        # `obligatoires` peut AJOUTER des controles, jamais en retirer.
+        requis = controles_requis(scenario) | (obligatoires or set())
         presents = {c.controle_id for c in self.controles}
         if not requis <= presents:
             return False

@@ -1,6 +1,6 @@
 {
   "schema_version": "0.3",
-  "scenario_id": "BEAUME-SC-0002-v1",
+  "scenario_id": "BEAUME-SC-0002",
   "scenario_version": 1,
   "partition": "dev",
   "domain": "licenciement_contestation",

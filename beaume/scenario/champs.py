@@ -14,7 +14,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Literal, Union
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class TypeChamp(str, Enum):
@@ -41,7 +41,15 @@ class AttributReference(str, Enum):
 class ValeurLitterale(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: Literal["litteral"]
-    valeur: str
+    valeur: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _non_vide(self):
+        # Decision H01 (audit lot F) : un litteral vide ou blanc est refuse ;
+        # utiliser {"type": "absent", "motif": ...} a la place.
+        if not self.valeur.strip():
+            raise ValueError("litteral vide ou blanc refuse : declarer le champ absent")
+        return self
 
 
 class ValeurReference(BaseModel):
@@ -55,6 +63,13 @@ class ValeurAbsente(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: Literal["absent"]
     motif: MotifAbsence
+    precision: str | None = None
+
+    @model_validator(mode="after")
+    def _autre_explicite(self):
+        if self.motif is MotifAbsence.AUTRE and not (self.precision or "").strip():
+            raise ValueError("absent motif=autre : precision (texte explicatif) requise")
+        return self
 
 
 ValeurChamp = Annotated[

@@ -22,6 +22,7 @@ data/*
 data/scenarios/*
 !data/scenarios/exemples/
 !data/scenarios/structures/
+!data/scenarios/rapports/
 *.bak
 *.gguf
 .env
