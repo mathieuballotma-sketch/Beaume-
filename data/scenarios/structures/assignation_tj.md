@@ -1,6 +1,6 @@
-**ASSIGNATION DEVANT LE TRIBUNAL DE GRANDE INSTANCE DE [JURIDICTION]**
+**ASSIGNATION DEVANT LE TRIBUNAL JUDICIAIRE DE [JURIDICTION]**
 
-L'an [ANNEE] et le [DATE_JOUR]
+Le [DATE_ACTUELLE]
 
 **POUR :**
 [NOM_DEMANDEUR]
@@ -16,7 +16,7 @@ Huissier soussigné, l'honneur d'informer :
 [NOM_DEFENDEUR]
 Demeurant : [ADRESSE_DEFENDEUR]
 
-Qu'un procès lui est intenté pour les raisons ci-après exposées devant le Tribunal de Grande Instance de [JURIDICTION] :
+Qu'un procès lui est intenté pour les raisons ci-après exposées devant le Tribunal Judiciaire de [JURIDICTION] :
 
 **OBJET DE LA DEMANDE**
 

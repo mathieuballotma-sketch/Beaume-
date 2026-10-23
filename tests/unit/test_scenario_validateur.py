@@ -874,9 +874,9 @@ def _template_scenario(champs_override=None, chemin=None):
     )
 
 
-def test_version_regle_est_5():
+def test_version_regle_est_6():
     from beaume.scenario.validateur import VERSION_REGLE
-    assert VERSION_REGLE == "5"
+    assert VERSION_REGLE == "6"
 
 
 def test_controles_requis_sans_template():
@@ -963,11 +963,15 @@ def test_rapport_forge_sans_empreintes_refuse():
 
 
 def test_empreinte_template_alteree_rejetee(tmp_path):
+    """Depuis F-b3a, un template doit avoir son meta a cote. Les deux
+    sont copies ensemble ; l'alteration du seul template doit invalider."""
     sc = _template_scenario()
-    dst = tmp_path / "data" / "scenarios" / "structures" / "saisine_prud_hommes.md"
-    dst.parent.mkdir(parents=True)
-    src = _RACINE / "data" / "scenarios" / "structures" / "saisine_prud_hommes.md"
-    dst.write_bytes(src.read_bytes())
+    struct = tmp_path / "data" / "scenarios" / "structures"
+    struct.mkdir(parents=True)
+    src_struct = _RACINE / "data" / "scenarios" / "structures"
+    for nom in ("saisine_prud_hommes.md", "saisine_prud_hommes.md.meta.json"):
+        (struct / nom).write_bytes((src_struct / nom).read_bytes())
+    dst = struct / "saisine_prud_hommes.md"
     r = valider_scenario(sc, racine=tmp_path)
     assert r.accepte(sc, racine=tmp_path) is True
     dst.write_text(dst.read_text() + "\n", encoding="utf-8")
@@ -1063,3 +1067,59 @@ def test_chrono_accepte_refuse_si_inversion():
     ])
     r = valider_scenario(sc)
     assert r.accepte(sc) is False
+
+
+
+# --- F-b3b : empreintes_meta ---
+
+def _copier_template_et_meta(tmp_path, nom="saisine_prud_hommes.md"):
+    struct = tmp_path / "data" / "scenarios" / "structures"
+    struct.mkdir(parents=True, exist_ok=True)
+    src_struct = _RACINE / "data" / "scenarios" / "structures"
+    for f in (nom, nom + ".meta.json"):
+        (struct / f).write_bytes((src_struct / f).read_bytes())
+    return struct
+
+
+def test_empreinte_meta_alteree_rejetee(tmp_path):
+    sc = _template_scenario()
+    struct = _copier_template_et_meta(tmp_path)
+    r = valider_scenario(sc, racine=tmp_path)
+    assert r.accepte(sc, racine=tmp_path) is True
+    meta = struct / "saisine_prud_hommes.md.meta.json"
+    meta.write_text(meta.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    assert r.accepte(sc, racine=tmp_path) is False
+
+
+def test_empreinte_meta_manquante_refusee(tmp_path):
+    sc = _template_scenario()
+    _copier_template_et_meta(tmp_path)
+    r = valider_scenario(sc, racine=tmp_path)
+    r.empreintes_meta = {}
+    assert r.accepte(sc, racine=tmp_path) is False
+
+
+def test_empreinte_meta_superflue_refusee(tmp_path):
+    sc = _template_scenario()
+    _copier_template_et_meta(tmp_path)
+    r = valider_scenario(sc, racine=tmp_path)
+    r.empreintes_meta["data/scenarios/structures/intrus.md.meta.json"] = "abc"
+    assert r.accepte(sc, racine=tmp_path) is False
+
+
+def test_chaque_rapport_sur_disque_accepte():
+    import json as _json
+    from beaume.scenario.model import Scenario
+    from beaume.scenario.rapport import RapportValidation
+    rapports_dir = _RACINE / "data" / "scenarios" / "rapports"
+    exemples_dir = _RACINE / "data" / "scenarios" / "exemples"
+    for fichier in rapports_dir.glob("*.json"):
+        r = RapportValidation(**_json.loads(fichier.read_text(encoding="utf-8")))
+        trouve = None
+        for f_ex in exemples_dir.glob("*.json"):
+            sc = Scenario(**_json.loads(f_ex.read_text(encoding="utf-8")))
+            if sc.scenario_id == r.scenario_id and sc.scenario_version == r.scenario_version:
+                trouve = sc
+                break
+        assert trouve is not None, f"aucun scenario pour {fichier.name}"
+        assert r.accepte(trouve, racine=_RACINE) is True, f"{fichier.name} refuse"

@@ -1,0 +1,42 @@
+{
+  "schema_meta": "1",
+  "template": "conclusions_prud.md",
+  "champs": {
+    "NOM_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "NOM_DEFENDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "AVOCAT_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "AVOCAT_DEFENDEUR": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "VILLE": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "FAITS": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DISCUSSION": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DISPOSITIF": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DATE_ACTUELLE": {
+      "type": "date",
+      "obligatoire": true
+    }
+  }
+}

@@ -1,0 +1,54 @@
+{
+  "schema_meta": "1",
+  "template": "assignation_tj.md",
+  "champs": {
+    "JURIDICTION": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "NOM_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DATE_NAISSANCE": {
+      "type": "date",
+      "obligatoire": false
+    },
+    "ADRESSE_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "AVOCAT_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "NOM_DEFENDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "ADRESSE_DEFENDEUR": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "EXPOSE_FAITS": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DISCUSSION_JURIDIQUE": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "DEMANDES_DISPOSITIF": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "DATE_ACTUELLE": {
+      "type": "date",
+      "obligatoire": true
+    },
+    "LIEU": {
+      "type": "texte",
+      "obligatoire": false
+    }
+  }
+}
