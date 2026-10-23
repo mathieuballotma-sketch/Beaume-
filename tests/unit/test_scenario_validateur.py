@@ -874,9 +874,9 @@ def _template_scenario(champs_override=None, chemin=None):
     )
 
 
-def test_version_regle_est_3():
+def test_version_regle_est_4():
     from beaume.scenario.validateur import VERSION_REGLE
-    assert VERSION_REGLE == "3"
+    assert VERSION_REGLE == "4"
 
 
 def test_controles_requis_sans_template():
@@ -987,3 +987,79 @@ def test_template_hors_structures_rejete():
     c = [x for x in r.controles
          if x.controle_id == "generation.templates_coherents"][0]
     assert c.resultat is ResultatControle.ECHOUE
+
+
+
+# --- F-b2-delta : ordre chronologique des evenements ---
+
+def _evt(event_id, date_iso, actors=("scn:actor:s",)):
+    return {
+        "event_id": event_id,
+        "date": {"valeur": date_iso, "precision": "jour"},
+        "description": "d",
+        "actors_impliques": list(actors),
+        "provenance": _prov(),
+    }
+
+
+def test_chrono_deux_evenements_tries_reussi():
+    sc = _scenario(events=[
+        _evt("scn:event:a", "2020-01-01"),
+        _evt("scn:event:b", "2021-01-01"),
+    ])
+    r = valider_scenario(sc)
+    c = [x for x in r.controles
+         if x.controle_id == "scenario.evenements_chronologiques"][0]
+    assert c.resultat is ResultatControle.REUSSI
+
+
+def test_chrono_deux_evenements_inverses_echoue():
+    sc = _scenario(events=[
+        _evt("scn:event:b", "2021-01-01"),
+        _evt("scn:event:a", "2020-01-01"),
+    ])
+    r = valider_scenario(sc)
+    c = [x for x in r.controles
+         if x.controle_id == "scenario.evenements_chronologiques"][0]
+    assert c.resultat is ResultatControle.ECHOUE
+    assert "scn:event:a" in c.motif
+
+
+def test_chrono_trois_evenements_inversion_au_milieu():
+    sc = _scenario(events=[
+        _evt("scn:event:a", "2020-01-01"),
+        _evt("scn:event:c", "2022-01-01"),
+        _evt("scn:event:b", "2021-01-01"),
+    ])
+    r = valider_scenario(sc)
+    c = [x for x in r.controles
+         if x.controle_id == "scenario.evenements_chronologiques"][0]
+    assert c.resultat is ResultatControle.ECHOUE
+    assert "scn:event:b" in c.motif
+
+
+def test_chrono_dates_identiques_reussi():
+    sc = _scenario(events=[
+        _evt("scn:event:a", "2020-01-01"),
+        _evt("scn:event:b", "2020-01-01"),
+    ])
+    r = valider_scenario(sc)
+    c = [x for x in r.controles
+         if x.controle_id == "scenario.evenements_chronologiques"][0]
+    assert c.resultat is ResultatControle.REUSSI
+
+
+def test_chrono_un_seul_evenement_reussi():
+    r = valider_scenario(_scenario())
+    c = [x for x in r.controles
+         if x.controle_id == "scenario.evenements_chronologiques"][0]
+    assert c.resultat is ResultatControle.REUSSI
+
+
+def test_chrono_accepte_refuse_si_inversion():
+    sc = _scenario(events=[
+        _evt("scn:event:b", "2021-01-01"),
+        _evt("scn:event:a", "2020-01-01"),
+    ])
+    r = valider_scenario(sc)
+    assert r.accepte(sc) is False
