@@ -31,3 +31,4 @@ data/scenarios/*
 /docs/equipe/
 AGENTS.md
 docs/equipe/
+*.bak_*
