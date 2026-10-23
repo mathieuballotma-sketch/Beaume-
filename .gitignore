@@ -17,7 +17,11 @@ dist/
 data/training/
 .env
 .env.*
-data/
+data/*
+!data/scenarios/
+data/scenarios/*
+!data/scenarios/exemples/
+!data/scenarios/structures/
 *.bak
 *.gguf
 .env
