@@ -53,6 +53,8 @@ class RoleActeur(str, Enum):
     AVOCAT_DEMANDEUR = "avocat_demandeur"
     AVOCAT_DEFENDEUR = "avocat_defendeur"
     TEMOIN = "temoin"
+    EMPRUNTEUR = "emprunteur"
+    PRETEUR = "preteur"
 
 
 class StatutProposition(str, Enum):
