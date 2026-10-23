@@ -34,12 +34,16 @@ from beaume.scenario.resolution import (
     ErreurResolution,
     resoudre_reference,
 )
+from beaume.scenario.meta_template import (
+    charger_meta,
+    nom_meta_pour,
+)
 from beaume.scenario.model import ModeProvenance, Scenario
 from beaume.scenario.rapport import Controle, RapportValidation, ResultatControle
 
 # "2" : formats litteraux stricts, dates_valides effectif,
 # auteur != destinataire (audit lot F, 2026-10-23).
-VERSION_REGLE = "5"  # 5 : AVOCAT_<role> controle, empreintes exhaustives (audit FB)
+VERSION_REGLE = "6"  # 6 : empreintes_meta exhaustives ; F-b3b
 
 # Hypotheses de contrat (a confirmer par Mathieu) :
 # montant = chiffres ASCII, point decimal, 2 decimales max, >= 0, 15 chiffres max ;
@@ -562,11 +566,19 @@ def _coherence_dates_calculees(scenario: Scenario) -> Controle:
 
 
 def verifier_templates(scenario: Scenario, racine: Path) -> Controle:
-    """Controle documentaire (prefiguration F-b1, hors CONTROLES_OBLIGATOIRES).
+    """Controle documentaire des templates et de leurs metas (F-b3a).
 
-    Pour chaque document mode=template : chemin sous
-    data/scenarios/structures, fichier existant, et parite exacte entre
-    les balises [XXX] du template et les cles de `champs`.
+    Facettes de motif (prefixes) :
+    - [chemin]        : template hors data/scenarios/structures/
+    - [absent]        : template ou meta introuvable
+    - [meta_invalide] : meta illisible ou Pydantic refuse
+    - [meta_template] : meta.template != nom de fichier du template
+    - [parite]        : meta / template / scenario non concordants
+    - [type]          : type declare dans le scenario != type du meta
+    - [obligatoire]   : champ obligatoire du meta declare absent dans le
+                        scenario
+
+    Fail-closed : toute incoherence est un ECHOUE, jamais un REUSSI tacite.
     """
     base = (racine / "data" / "scenarios" / "structures").resolve()
     objets: list[str] = []
@@ -577,17 +589,71 @@ def verifier_templates(scenario: Scenario, racine: Path) -> Controle:
         objets.append(d.document_id)
         chemin = (racine / d.contenu.chemin).resolve()
         if base not in chemin.parents:
-            echecs.append(f"{d.document_id}: chemin hors structures {d.contenu.chemin!r}")
+            echecs.append(
+                f"[chemin] {d.document_id}: hors structures {d.contenu.chemin!r}"
+            )
             continue
         if not chemin.is_file():
-            echecs.append(f"{d.document_id}: template introuvable {d.contenu.chemin!r}")
+            echecs.append(
+                f"[absent] {d.document_id}: template introuvable {d.contenu.chemin!r}"
+            )
+            continue
+        meta_chemin = nom_meta_pour(chemin)
+        if not meta_chemin.is_file():
+            echecs.append(
+                f"[absent] {d.document_id}: meta introuvable {meta_chemin.name}"
+            )
+            continue
+        try:
+            meta = charger_meta(meta_chemin)
+        except (OSError, ValueError) as exc:
+            echecs.append(
+                f"[meta_invalide] {d.document_id}: {exc}"
+            )
+            continue
+        if meta.template != chemin.name:
+            echecs.append(
+                f"[meta_template] {d.document_id}: meta.template={meta.template!r} "
+                f"!= {chemin.name!r}"
+            )
             continue
         balises = set(_RE_BALISE.findall(chemin.read_text(encoding="utf-8")))
-        champs = set(d.contenu.champs)
-        if balises - champs:
-            echecs.append(f"{d.document_id}: balises sans champ {sorted(balises - champs)}")
-        if champs - balises:
-            echecs.append(f"{d.document_id}: champs sans balise {sorted(champs - balises)}")
+        meta_champs = set(meta.champs)
+        if meta_champs - balises:
+            echecs.append(
+                f"[parite] {d.document_id}: meta declare "
+                f"{sorted(meta_champs - balises)} absent(s) du template"
+            )
+        if balises - meta_champs:
+            echecs.append(
+                f"[parite] {d.document_id}: template a "
+                f"{sorted(balises - meta_champs)} absent(s) du meta"
+            )
+        champs_scenario = set(d.contenu.champs)
+        if balises - champs_scenario:
+            echecs.append(
+                f"[parite] {d.document_id}: balises du template sans champ "
+                f"{sorted(balises - champs_scenario)}"
+            )
+        if champs_scenario - balises:
+            echecs.append(
+                f"[parite] {d.document_id}: champs du scenario sans balise "
+                f"{sorted(champs_scenario - balises)}"
+            )
+        decl = d.contenu.declarations
+        for k, champ_meta in meta.champs.items():
+            if k in decl and decl[k] != champ_meta.type.value:
+                echecs.append(
+                    f"[type] {d.document_id}.{k}: declaration={decl[k]!r} "
+                    f"!= meta={champ_meta.type.value!r}"
+                )
+            if champ_meta.obligatoire and k in d.contenu.champs:
+                val = d.contenu.champs[k]
+                if isinstance(val, ValeurAbsente):
+                    echecs.append(
+                        f"[obligatoire] {d.document_id}.{k}: "
+                        f"obligatoire declare absent"
+                    )
     if not objets:
         return _c("generation.templates_coherents", ResultatControle.NON_APPLICABLE,
                   [], "aucun document template")
@@ -703,6 +769,7 @@ def valider_scenario(
         _balises_roles(scenario),
     ]
     empreintes_templates: dict[str, str] = {}
+    empreintes_meta: dict[str, str] = {}
     has_templates = any(
         d.contenu.mode == "template" for d in scenario.documents
     )
@@ -727,6 +794,13 @@ def valider_scenario(
                     empreintes_templates[d.contenu.chemin] = hashlib.sha256(
                         chemin.read_bytes()
                     ).hexdigest()
+                    meta_chemin = nom_meta_pour(chemin)
+                    if meta_chemin.is_file():
+                        empreintes_meta[
+                            d.contenu.chemin + ".meta.json"
+                        ] = hashlib.sha256(
+                            meta_chemin.read_bytes()
+                        ).hexdigest()
     return RapportValidation(
         rapport_id=f"rapport:{scenario.scenario_id}:v{scenario.scenario_version}",
         scenario_id=scenario.scenario_id,
@@ -736,4 +810,5 @@ def valider_scenario(
         genere_le=datetime.now(timezone.utc),
         controles=controles,
         empreintes_templates=empreintes_templates,
+        empreintes_meta=empreintes_meta,
     )

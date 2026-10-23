@@ -36,6 +36,7 @@ class RapportValidation(BaseModel):
     genere_le: datetime
     controles: list[Controle] = Field(default_factory=list)
     empreintes_templates: dict[str, str] = Field(default_factory=dict)
+    empreintes_meta: dict[str, str] = Field(default_factory=dict)
 
     def accepte(
         self,
@@ -77,6 +78,20 @@ class RapportValidation(BaseModel):
                 return False
             base = (racine / "data" / "scenarios" / "structures").resolve()
             for rel_chemin, h_stored in self.empreintes_templates.items():
+                chemin = (racine / rel_chemin).resolve()
+                if base not in chemin.parents:
+                    return False
+                if not chemin.is_file():
+                    return False
+                if hashlib.sha256(chemin.read_bytes()).hexdigest() != h_stored:
+                    return False
+            # Empreintes de metas (F-b3b, symetrique aux templates).
+            if not self.empreintes_meta:
+                return False
+            attendus_m = {a + ".meta.json" for a in attendus}
+            if set(self.empreintes_meta) != attendus_m:
+                return False
+            for rel_chemin, h_stored in self.empreintes_meta.items():
                 chemin = (racine / rel_chemin).resolve()
                 if base not in chemin.parents:
                     return False

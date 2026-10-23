@@ -1,0 +1,34 @@
+{
+  "schema_meta": "1",
+  "template": "contrat_pret.md",
+  "champs": {
+    "NOM_PRETEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "NOM_EMPRUNTEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "MONTANT_CAPITAL": {
+      "type": "montant",
+      "obligatoire": true
+    },
+    "DATE_SIGNATURE": {
+      "type": "date",
+      "obligatoire": true
+    },
+    "TYPE_GARANTIE": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "LIEU": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "DATE_ACTUELLE": {
+      "type": "date",
+      "obligatoire": true
+    }
+  }
+}
