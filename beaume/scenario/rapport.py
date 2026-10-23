@@ -68,6 +68,13 @@ class RapportValidation(BaseModel):
                 return False
             if racine is None:
                 return False
+            attendus = {
+                d.contenu.chemin for d in scenario.documents
+                if d.contenu.mode == "template"
+            }
+            # Le rapport doit couvrir exactement les templates du scenario.
+            if set(self.empreintes_templates) != attendus:
+                return False
             base = (racine / "data" / "scenarios" / "structures").resolve()
             for rel_chemin, h_stored in self.empreintes_templates.items():
                 chemin = (racine / rel_chemin).resolve()

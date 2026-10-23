@@ -39,7 +39,7 @@ from beaume.scenario.rapport import Controle, RapportValidation, ResultatControl
 
 # "2" : formats litteraux stricts, dates_valides effectif,
 # auteur != destinataire (audit lot F, 2026-10-23).
-VERSION_REGLE = "4"
+VERSION_REGLE = "5"  # 5 : AVOCAT_<role> controle, empreintes exhaustives (audit FB)
 
 # Hypotheses de contrat (a confirmer par Mathieu) :
 # montant = chiffres ASCII, point decimal, 2 decimales max, >= 0, 15 chiffres max ;
@@ -76,7 +76,7 @@ def controles_requis(scenario: Scenario) -> set[str]:
     if any(d.contenu.mode == "template" for d in scenario.documents):
         requis.add("generation.templates_coherents")
     if any(
-        nom.startswith("NOM_")
+        nom.startswith(("NOM_", "AVOCAT_"))
         for d in scenario.documents
         for nom in d.contenu.champs
     ):
@@ -604,11 +604,18 @@ def _balises_roles(scenario: Scenario) -> Controle:
     echecs: list[str] = []
     for d in scenario.documents:
         for nom_champ, valeur in d.contenu.champs.items():
-            if not nom_champ.startswith("NOM_"):
+            if nom_champ.startswith("NOM_"):
+                suffixe = nom_champ[4:].lower()
+            elif nom_champ.startswith("AVOCAT_"):
+                # AVOCAT_DEMANDEUR -> role avocat_demandeur ; absent tolere
+                # (avocat non defini), litteral refuse comme pour NOM_.
+                suffixe = nom_champ.lower()
+                if isinstance(valeur, ValeurAbsente):
+                    continue
+            else:
                 continue
             ref = f"{d.document_id}.{nom_champ}"
             objets.append(ref)
-            suffixe = nom_champ[4:].lower()
             if not isinstance(valeur, ValeurReference):
                 echecs.append(
                     f"{ref}: doit etre une reference a un acteur, "
@@ -639,7 +646,7 @@ def _balises_roles(scenario: Scenario) -> Controle:
             "structure.balises_roles",
             ResultatControle.NON_APPLICABLE,
             [],
-            "aucun champ NOM_",
+            "aucun champ NOM_ ou AVOCAT_ renseigne",
         )
     res = ResultatControle.ECHOUE if echecs else ResultatControle.REUSSI
     return _c("structure.balises_roles", res, objets, " ; ".join(echecs))

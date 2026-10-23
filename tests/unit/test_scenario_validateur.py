@@ -874,9 +874,9 @@ def _template_scenario(champs_override=None, chemin=None):
     )
 
 
-def test_version_regle_est_4():
+def test_version_regle_est_5():
     from beaume.scenario.validateur import VERSION_REGLE
-    assert VERSION_REGLE == "4"
+    assert VERSION_REGLE == "5"
 
 
 def test_controles_requis_sans_template():
