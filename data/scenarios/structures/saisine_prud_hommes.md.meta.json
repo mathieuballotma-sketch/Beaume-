@@ -1,0 +1,30 @@
+{
+  "schema_meta": "1",
+  "template": "saisine_prud_hommes.md",
+  "champs": {
+    "NOM_DEMANDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "NOM_DEFENDEUR": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "EXPOSE_FAITS": {
+      "type": "texte",
+      "obligatoire": true
+    },
+    "MONTANT": {
+      "type": "montant",
+      "obligatoire": true
+    },
+    "LIEU": {
+      "type": "texte",
+      "obligatoire": false
+    },
+    "DATE_ACTUELLE": {
+      "type": "date",
+      "obligatoire": true
+    }
+  }
+}
