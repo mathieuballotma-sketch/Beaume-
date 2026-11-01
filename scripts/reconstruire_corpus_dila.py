@@ -1,4 +1,4 @@
-"""Reconstruit legi_full_v2.sqlite à partir du corpus DILA de Codex.
+"""Reconstruit legi_full_v2.sqlite à partir du corpus DILA local.
 
 Lit `data/vector/legi_dila_v2/legi_dila.sqlite` (vue versions_articles),
 filtre par code DILA (par défaut : 5 codes cibles), et écrit dans une

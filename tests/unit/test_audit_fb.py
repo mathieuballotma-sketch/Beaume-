@@ -1,4 +1,4 @@
-"""Tests adverses F-b1 / F-b2 (audit Grok Bot, 23/10/2026).
+"""Tests adverses du contrat scénario et des métadonnées.
 
 test_D* : comportement attendu, rouge sur le code livre si defaut.
 test_H* : comportement actuel documente, decision a confirmer.

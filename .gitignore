@@ -33,3 +33,16 @@ data/scenarios/*
 AGENTS.md
 docs/equipe/
 *.bak_*
+
+# Artefacts locaux et documents de travail
+*.rtf
+*.bak*
+*.tar.gz
+*.zip
+/organisation/
+/runs/
+/docs/PASSATION*
+/docs/REPRISE*
+/docs/PROMPT_*
+/docs/JOURNAL*
+/docs/TESTS_JOURNAL*

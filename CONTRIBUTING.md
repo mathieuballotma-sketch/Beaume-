@@ -39,5 +39,14 @@ ou une preuve absente doit rester visible. Ne pas présenter une sortie de LLM
 comme une annotation humaine validée. Ne pas publier de corpus volumineux,
 modèles ou données d’entraînement sans vérifier provenance et droits.
 
-La licence du code reste à définir. Aucune licence de contribution supplémentaire
-n’est créée par ce document ; clarifier les droits avant une contribution substantielle.
+Les contributions de code sont proposées sous AGPL-3.0-only, comme le projet.
+Conserver la provenance et les licences des contenus tiers. Ne pas publier de
+notes de travail, passations, journaux privés ou chemins personnels.
+
+Avant une proposition :
+
+```sh
+python -m pip install -e '.[dev,corpus]'
+python scripts/verifier_publication.py
+python -m pytest -q -rs
+```

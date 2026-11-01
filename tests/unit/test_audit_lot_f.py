@@ -1,4 +1,4 @@
-"""Tests adverses de l'audit lot F (Grok Bot, 2026-10-23).
+"""Tests adverses de l'contrat scénario, cas adverses.
 
 Convention :
 - tests `test_D*` : comportement ATTENDU ; ils echouent sur le code

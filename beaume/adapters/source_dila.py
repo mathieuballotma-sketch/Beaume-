@@ -1,6 +1,6 @@
 """Adaptateur de lecture du corpus DILA LEGI v2.
 
-Lit la base SQLite produite par `scripts/preparer_legi_dila.py` (Codex)
+Lit la base SQLite produite par `scripts/preparer_legi_dila.py`
 et expose les articles avec toutes leurs versions, au format attendu
 par `DepotSQLite.enregistrer()`.
 

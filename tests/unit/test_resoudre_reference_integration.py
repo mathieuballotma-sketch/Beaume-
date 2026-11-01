@@ -65,3 +65,21 @@ def test_resoudre_reference_code_inconnu(tmp_path):
         raise AssertionError("aurait du lever VisaInvalide")
     except VisaInvalide:
         pass
+
+
+def test_resoudre_reference_absente_rejetee(tmp_path):
+    import pytest
+    from scripts.resoudre_visa import ReferenceVisa, ResolutionAmbigue, resoudre_reference
+    dep = DepotSQLite(tmp_path / "legi.sqlite")
+    with pytest.raises(ResolutionAmbigue):
+        resoudre_reference(dep, ReferenceVisa("code_civil", "9999"), date(2020, 1, 1))
+
+
+def test_resoudre_reference_version_incompatible_rejetee(tmp_path):
+    import pytest
+    from scripts.resoudre_visa import ReferenceVisa, VersionNonApplicable, resoudre_reference
+    dep = DepotSQLite(tmp_path / "legi.sqlite")
+    dep.enregistrer([_article(CodeJuridique.CODE_CIVIL, "1382",
+        "LEGIARTI000000000001", "LEGIARTI000000000011", date(1804, 3, 21))])
+    with pytest.raises(VersionNonApplicable):
+        resoudre_reference(dep, ReferenceVisa("code_civil", "1382", "LEGIARTI000000000099"), date(2020, 1, 1))
