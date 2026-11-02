@@ -12,7 +12,7 @@ def main() -> int:
         p = Path(name)
         upper = name.upper()
         if (p.name == 'AGENTS.md' or p.name.startswith('.env')
-                or name.startswith(('docs/equipe/', 'organisation/', 'runs/'))
+                or name.startswith(('docs/equipe/', 'organisation/', 'runs/', 'data/scenarios/rapports/'))
                 or p.suffix.lower() in {'.rtf', '.sqlite', '.gguf', '.log'}
                 or '.bak' in p.name or any(t in upper for t in ('PASSATION', 'REPRISE', 'PROMPT_BEAUME'))):
             errors.append(name)

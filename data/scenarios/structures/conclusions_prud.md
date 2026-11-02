@@ -1,26 +1,23 @@
-**CONCLUSIONS**
+> SUPPORT FICTIF DE TEST LOGICIEL — aucun usage procédural ou contractuel.
+
+# Exemple technique : argumentation de partie
 
 **POUR :**
 [NOM_DEMANDEUR]
-Ayant pour Avocat : Maître [AVOCAT_DEMANDEUR]
+Conseil déclaré : [AVOCAT_DEMANDEUR]
 
 **CONTRE :**
 [NOM_DEFENDEUR]
-Ayant pour Avocat : Maître [AVOCAT_DEFENDEUR]
+Conseil déclaré : [AVOCAT_DEFENDEUR]
 
-**PLAISE AU CONSEIL DE PRUD'HOMMES DE [VILLE]**
+Ville du scénario : [VILLE]
+Date du document : [DATE_ACTUELLE]
 
-[NOM_DEMANDEUR] a saisi le Conseil de Prud'hommes de [VILLE] afin de contester son licenciement.
-
-**LES FAITS :**
+## Faits allégués par la partie
 [FAITS]
 
-**DISCUSSION :**
+## Argumentation fictive, non validée
 [DISCUSSION]
 
-**PAR CES MOTIFS :**
+## Demandes déclarées, sans jugement sur leur bien-fondé
 [DISPOSITIF]
-
-Fait à [VILLE], le [DATE_ACTUELLE].
-
-Maître [AVOCAT_DEMANDEUR]

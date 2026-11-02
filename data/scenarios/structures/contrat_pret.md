@@ -1,13 +1,13 @@
-**CONTRAT DE PRÊT**
+> SUPPORT FICTIF DE TEST LOGICIEL — aucun usage procédural ou contractuel.
 
-Entre les soussignés :
-**[NOM_PRETEUR]**, ci-après désigné "le Prêteur",
-Et
-**[NOM_EMPRUNTEUR]**, ci-après désigné "l'Emprunteur".
+# Exemple technique : fiche de prêt fictif
 
-Il a été convenu ce qui suit :
-Le Prêteur consent à l'Emprunteur un prêt d'un montant de **[MONTANT_CAPITAL]**.
-Ce prêt a été signé le **[DATE_SIGNATURE]**.
-Le prêt est garanti par : **[TYPE_GARANTIE]**.
+Prêteur du scénario : [NOM_PRETEUR]
+Emprunteur du scénario : [NOM_EMPRUNTEUR]
+Capital déclaré : [MONTANT_CAPITAL]
+Date de signature déclarée : [DATE_SIGNATURE]
+Garantie déclarée : [TYPE_GARANTIE]
+Lieu déclaré : [LIEU]
+Date du document : [DATE_ACTUELLE]
 
-Fait à [LIEU], le [DATE_ACTUELLE].
+Cette fiche sert uniquement au remplacement et au contrôle de champs typés.

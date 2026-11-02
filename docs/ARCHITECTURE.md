@@ -2,7 +2,7 @@
 
 [Accueil](../README.md) · [Documentation](README.md)
 
-Carte issue de la lecture de `main` à partir de `515edce`, le 27 octobre 2026.
+Carte actualisée le 2 novembre 2026 après intégration des contrats de scénarios.
 Elle décrit les modules publiés ; les expériences locales du laboratoire ne
 sont pas automatiquement présentes dans cette branche.
 
@@ -17,12 +17,15 @@ beaume/
   output/        Rapport et rendu Markdown
   config/        Chemins de données
   bench/         Cas et métriques d’évaluation
+  scenario/      Contrats, calculs et validation de scénarios fictifs
   testing/       Doublures utilisées pour les tests
   utils/         Journaux et mesure des durées
 scripts/         Points d’entrée et outils de préparation/évaluation
+  experimental/  Prototype historique désactivé, hors pipeline nominal
 tests/          Tests unitaires, intégration et petites fixtures
-docs/           Guides, protocoles, décisions et journaux historiques
-data/           Ressources locales exclues de Git
+docs/           Guides publics, protocoles et limites
+data/scenarios/ Exemples fictifs et gabarits de tests publiés
+data/           Autres ressources locales exclues de Git
 ```
 
 ## Chemin d’une analyse
@@ -67,7 +70,9 @@ Le pipeline transmet ensuite les citations au vérificateur.
 | `data/logs/`, `data/tmp/` | Journaux et fichiers temporaires |
 | `data/training/` | Préparation des jeux d’entraînement par les scripts concernés |
 
-Ces ressources ne sont pas livrées par un clone Git. Les noms `v2` ou `v3` de
+Ces ressources ne sont pas livrées par un clone Git. Seuls les exemples et
+structures de tests sous `data/scenarios/` sont publiés ; leurs rapports générés
+restent locaux. Les noms `v2` ou `v3` de
 bases expérimentales ne changent pas le chemin ouvert par le script nominal.
 
 ## Produit et laboratoire Balladeur
@@ -78,6 +83,11 @@ Les lots locaux et les branches de recherche ont leurs propres versions et preuv
 La présence d’un script d’usine n’atteste pas qu’un dataset est prêt à entraîner
 un modèle. Une structure cohérente et des contrôles déterministes ne suffisent
 pas à valider les conclusions juridiques.
+
+Le [prototype historique](../scripts/experimental/README.md) reste bloqué et
+sert aux tests de non-régression. Il ne représente pas le laboratoire actif.
+Les [gabarits publiés](../data/scenarios/README.md) sont des supports logiciels
+fictifs, pas des modèles d’actes.
 
 ## Faire évoluer le code
 

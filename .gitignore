@@ -20,9 +20,10 @@ data/training/
 data/*
 !data/scenarios/
 data/scenarios/*
+!data/scenarios/README.md
 !data/scenarios/exemples/
 !data/scenarios/structures/
-!data/scenarios/rapports/
+data/scenarios/rapports/
 *.bak
 *.gguf
 .env

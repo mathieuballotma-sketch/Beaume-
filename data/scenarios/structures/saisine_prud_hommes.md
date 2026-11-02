@@ -1,4 +1,6 @@
-**SAISINE DU CONSEIL DE PRUD'HOMMES**
+> SUPPORT FICTIF DE TEST LOGICIEL — aucun usage procédural ou contractuel.
+
+# Exemple technique : demande de partie
 
 **DEMANDEUR :**
 [NOM_DEMANDEUR]
@@ -6,13 +8,11 @@
 **DÉFENDEUR :**
 [NOM_DEFENDEUR]
 
-**OBJET DE LA DEMANDE :**
-Contestation du licenciement.
-
-**FAITS :**
+## Faits allégués dans le scénario
 [EXPOSE_FAITS]
 
-**PAR CES MOTIFS :**
-Condamner la société défenderesse à payer au salarié la somme de [MONTANT] euros à titre de dommages et intérêts pour licenciement sans cause réelle et sérieuse.
+## Montant demandé par la partie
+[MONTANT] euros. Cette valeur ne constitue pas une évaluation des droits.
 
-Fait à [LIEU], le [DATE_ACTUELLE].
+Lieu déclaré : [LIEU]
+Date du document : [DATE_ACTUELLE]

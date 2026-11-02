@@ -19,8 +19,10 @@ modèle n’est requis pour la suite automatisée nominale.
 
 Sur le code préparé pour cette publication, sous macOS avec Python 3.12 :
 **669 tests réussis, 33 ignorés**. Cette mesure a utilisé l’environnement Python
-existant du développeur ; le workflow doit confirmer le résultat sur une
-installation Linux neuve. Le badge du README montre son statut réel.
+existant du développeur. La [première exécution CI du 2 novembre](https://github.com/mathieuballotma-sketch/Beaume-/actions/runs/41374853003)
+a ensuite réussi sur une installation Linux neuve avec Python 3.11 et 3.12,
+y compris le contrôle de publication et la démonstration. Le badge du README
+montre le statut du workflow courant, distinct de cette mesure historique.
 
 Les tests ignorés nécessitent des données locales ou des conditions spécifiques ;
 `-rs` affiche chaque motif. Ne pas les compter comme réussis. La suite n’est pas

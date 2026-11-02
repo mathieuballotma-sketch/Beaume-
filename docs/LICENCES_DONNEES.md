@@ -15,9 +15,12 @@ Cette licence ne remplace pas les licences des dépendances ou ressources tierce
   dataset exact ; une copie hébergée n’efface pas les conditions des sources.
 - Modèles : vérifier la licence des poids, du modèle de base et de chaque
   adaptation ; la licence du code Beaume n’accorde aucun droit sur ces poids.
-- Gabarits et exemples sous `data/scenarios/` : supports expérimentaux de tests,
-  non actes utilisables en justice. Leur provenance et les éventuels droits de
-  tiers doivent être vérifiés avant toute réutilisation comme modèles d’actes.
+- Gabarits sous `data/scenarios/structures/` : textes techniques fictifs rédigés
+  pour le dépôt le 2 novembre 2026, sous AGPL-3.0-only, remplaçant les anciens
+  textes à provenance insuffisamment documentée. Ce ne sont pas des modèles
+  d'actes. Voir la [notice des exemples](../data/scenarios/README.md).
+- Exemples de scénarios : données de développement avec provenance déclarée
+  par élément ; leurs arguments juridiques ne sont pas des annotations validées.
 - Les fixtures de tests ne constituent pas un corpus juridique de référence.
 
 Aucun corpus complet, poids de modèle ou dossier client n’est redistribué ici.

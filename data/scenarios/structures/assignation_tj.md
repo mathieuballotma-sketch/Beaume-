@@ -1,33 +1,26 @@
-**ASSIGNATION DEVANT LE TRIBUNAL JUDICIAIRE DE [JURIDICTION]**
+> SUPPORT FICTIF DE TEST LOGICIEL — aucun usage procédural ou contractuel.
 
-Le [DATE_ACTUELLE]
+# Exemple technique : document pour le TRIBUNAL JUDICIAIRE
+
+Juridiction fictive : [JURIDICTION]
+Date du document : [DATE_ACTUELLE]
+Lieu : [LIEU]
 
 **POUR :**
 [NOM_DEMANDEUR]
-Né(e) le [DATE_NAISSANCE]
-Demeurant : [ADRESSE_DEMANDEUR]
+Date de naissance déclarée : [DATE_NAISSANCE]
+Adresse déclarée : [ADRESSE_DEMANDEUR]
+Conseil déclaré : [AVOCAT_DEMANDEUR]
 
-Ayant pour Avocat :
-Maître [AVOCAT_DEMANDEUR]
-
-**J'ai,**
-Huissier soussigné, l'honneur d'informer :
-
+**CONTRE :**
 [NOM_DEFENDEUR]
-Demeurant : [ADRESSE_DEFENDEUR]
+Adresse déclarée : [ADRESSE_DEFENDEUR]
 
-Qu'un procès lui est intenté pour les raisons ci-après exposées devant le Tribunal Judiciaire de [JURIDICTION] :
-
-**OBJET DE LA DEMANDE**
-
-**- FAITS :**
+## Faits saisis dans le scénario
 [EXPOSE_FAITS]
 
-**- DISCUSSION :**
+## Argumentation fictive
 [DISCUSSION_JURIDIQUE]
 
-**PAR CES MOTIFS,**
-Le demandeur vous prie de bien vouloir :
+## Demandes déclarées, non évaluées
 [DEMANDES_DISPOSITIF]
-
-Fait à [LIEU], le [DATE_ACTUELLE].

@@ -15,14 +15,15 @@ import pytest
 
 @lru_cache(maxsize=1)
 def _module():
-    """Charge scripts/11_usine_a_dossiers.py sans import Python classique
+    """Charge scripts/experimental/usine_historique.py sans import Python classique
     (le nom commence par un chiffre)."""
     import importlib.util
 
     chemin = (
         Path(__file__).resolve().parents[2]
         / "scripts"
-        / "11_usine_a_dossiers.py"
+        / "experimental"
+        / "usine_historique.py"
     )
     assert chemin.exists(), f"introuvable : {chemin}"
     spec = importlib.util.spec_from_file_location("usine_a_dossiers_test", chemin)

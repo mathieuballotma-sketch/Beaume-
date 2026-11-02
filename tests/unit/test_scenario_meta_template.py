@@ -45,7 +45,8 @@ def test_contrat_pret_balise_corrigee():
     contenu = (STRUCT / "contrat_pret.md").read_text(encoding="utf-8")
     assert "[NOM_PREtEUR]" not in contenu
     assert "[NOM_PRETEUR]" in contenu
-    assert "Le Prêteur consent" in contenu
+    assert "Prêteur du scénario : [NOM_PRETEUR]" in contenu
+    assert "SUPPORT FICTIF DE TEST LOGICIEL" in contenu
     assert "La Banque consent" not in contenu
 
 
