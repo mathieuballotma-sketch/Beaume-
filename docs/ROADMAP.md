@@ -1,22 +1,38 @@
 # Feuille de route
 
-## Priorité actuelle
+Beaume progresse par étapes vérifiables vers un premier outil local destiné aux avocats. L'objectif est de confronter le projet au terrain **durant l'année 2026**, selon l'avancement et la disponibilité de professionnels volontaires. Cette intention ne constitue ni une promesse commerciale ni une validation du produit.
 
-1. Rendre l’installation et les essais reproductibles sur un clone neuf.
-2. Stabiliser les contrats, le traitement des inconnues et les preuves documentaires.
-3. Mesurer séparément recherche, sélection des articles et restitution.
-4. Constituer un jeu réservé indépendant des données de développement.
-5. Faire relire les critères et exemples par des professionnels du droit.
+## 1. Première expérience : résumé et sources
 
-## Avant une expérimentation en cabinet
+Construire un parcours limité et compréhensible :
 
-- documenter corpus, versions, modèle, configuration et limites ;
-- vérifier les flux réseau, journaux et conditions de conservation locales ;
-- mesurer erreurs, abstentions, latence et ressources sur le matériel cible ;
-- définir un protocole avec contrôle humain et retours structurés.
+1. Fournir quelques PDF textuels pris en charge.
+2. Obtenir un résumé clair et structuré.
+3. Sélectionner une information et accéder aux documents et pages proposés.
+4. Afficher les sources absentes, ambiguës ou nécessitant une vérification.
 
-## Hors promesse actuelle
+Le parcours doit distinguer la proposition d'une source, la localisation d'un passage et l'évaluation de son lien avec l'affirmation. Une phrase peut contenir plusieurs faits et s'appuyer sur plusieurs passages. Un lien cliquable ne prouve pas, à lui seul, que le passage soutient le résumé.
 
-Pas d’analyse juridique autonome validée, pas de couverture exhaustive garantie,
-pas d’entraînement automatique depuis les pièces clients. Les dates de livraison
-et les fonctionnalités commerciales ne sont pas fixées dans cette feuille de route.
+## 2. Raccorder et tester les briques
+
+- Clarifier les contrats entre extraction, résumé, provenance, vérification et restitution, sans présenter les expériences du laboratoire comme intégrées.
+- Tester les documents incomplets, les propositions multiples, les erreurs et l'identité du document ouvert ; préserver les avertissements.
+- Utiliser des cas synthétiques et des jeux de développement et d'évaluation séparés, en documentant les limites d'indépendance.
+- Mesurer la qualité des informations, des localisations et des abstentions, puis la durée, la mémoire et l'espace utilisés sur le matériel cible.
+
+## 3. Préparer la confrontation professionnelle
+
+- Rendre la démonstration compréhensible et utilisable sans terminal pour son périmètre défini.
+- Contacter des avocats volontaires pour comprendre leurs besoins et recueillir des retours sur le parcours, la lisibilité, la vérification et le temps total consacré, corrections comprises.
+- Commencer avec des dossiers fictifs ou publics adaptés. Pour toute utilisation de données professionnelles, définir préalablement les autorisations et les conditions de confidentialité.
+- Documenter les erreurs, comparer les attentes au comportement observé et corriger les problèmes prioritaires avant d'élargir les essais.
+
+## 4. Décider de la suite selon les résultats
+
+La prise en charge des scans, d'autres formats et spécialités, l'amélioration des modèles et une éventuelle offre commerciale seront évaluées en fonction des besoins observés, de la qualité mesurée et des ressources disponibles. Les capacités documentaires communes sont conçues pour pouvoir être réutilisées, mais leur généralisation à d'autres matières reste à démontrer.
+
+Le Balladeur est un laboratoire de génération et d'évaluation de dossiers synthétiques. Un jeu généré ou une suite de tests verts ne suffit pas à établir sa qualité pour l'entraînement, l'indépendance des affaires ou une validation juridique.
+
+## Conditions avant un usage sensible
+
+Vérifier la configuration locale et les flux réseau, les permissions, le stockage, les journaux et les conditions de conservation. Ne pas promettre la sécurité ou la conformité sur la seule base d'une exécution locale. L'avocat conserve le contrôle et la décision juridique.
