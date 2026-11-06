@@ -17,6 +17,20 @@ de loi contrôlables. L’avocat conserve la vérification et la décision jurid
 [État et limites](docs/ETAT_PROJET.md) · [Contribuer](CONTRIBUTING.md) ·
 [Hugging Face](https://huggingface.co/Beaume/beaume-qwen-3b)
 
+## Première expérience visée
+
+La première version destinée à être confrontée à des avocats vise un parcours simple : ouvrir quelques PDF textuels, lire un résumé structuré, sélectionner une information et accéder au document et à la page ou au passage proposés pour la vérifier. Les sources absentes, ambiguës ou incertaines doivent rester visibles.
+
+**Ce parcours complet est en cours de développement.** Une référence proposée, un passage effectivement retrouvé et un passage qui étaye une affirmation sont trois choses différentes. Le soutien sémantique et l'appréciation juridique restent à évaluer.
+
+## Où en est le projet
+
+Le dépôt public contient le pipeline et les tests décrits ci-dessous. En parallèle, le laboratoire local explore la fabrication de dossiers synthétiques avec le Balladeur, la conservation de plusieurs sources par affirmation et une navigation expérimentale vers des pages PDF. Ces essais ne constituent ni des fonctionnalités intégrées garanties par ce dépôt, ni une validation professionnelle. [État détaillé](docs/ETAT_PROJET.md).
+
+En **2026**, l'objectif est de confronter progressivement cette première expérience à des avocats volontaires, avec des exemples adaptés et des retours structurés. Ce calendrier exprime une intention, pas une date de mise sur le marché. [Feuille de route](docs/ROADMAP.md).
+
+
+
 ## Essayer sans télécharger de modèle ou de corpus
 
 ```sh
