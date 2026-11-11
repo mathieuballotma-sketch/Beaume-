@@ -1,4 +1,4 @@
-# État du projet — 7 novembre 2026
+# État du projet — 12 novembre 2026
 
 Beaume est un prototype en recherche et développement. L'objectif est une première expérience vérifiable avec des avocats ; aucun résultat disponible ne démontre une aptitude à l'analyse autonome de dossiers professionnels.
 
@@ -17,7 +17,7 @@ Les états du rapport décrivent des contrôles logiciels. Ils ne certifient ni 
 
 ## Travaux locaux en cours
 
-Le laboratoire expérimente le Balladeur pour construire et examiner des dossiers synthétiques, ainsi que la conservation de plusieurs propositions de sources et une navigation expérimentale vers des pages PDF. Ces travaux ne sont pas tous publiés ou raccordés à l'application. Leur existence ne démontre pas une généralisation, l'indépendance complète des jeux ni l'aptitude à entraîner un modèle. La localisation d'un passage et son lien avec l'affirmation restent des contrôles distincts.
+Le laboratoire expérimente le Balladeur pour construire et examiner des dossiers synthétiques, ainsi que la conservation de plusieurs propositions de sources et une navigation expérimentale vers des pages PDF. Sur le dossier fictif D7, une vue par thème présente des points à examiner construits à partir de faits annotés manuellement. Les trois liens de sources et un saut vers la page 2 d’un PDF fictif ont été observés dans Safari, sur les cas testés uniquement. Une première grille de travail destinée à l’évaluation humaine du lien affirmation–passage a été préparée. Sa méthode et le choix des paires restent à revoir avant annotation ; aucune conclusion d’étayage ou validation professionnelle n’en découle. Ces travaux ne sont pas tous publiés ou raccordés à l’application. Leur existence ne démontre pas une généralisation, l’indépendance complète des jeux ni l’aptitude à entraîner un modèle. La localisation d’un passage et son lien avec l’affirmation restent des contrôles distincts.
 
 L'objectif immédiat est de raccorder progressivement résumé, informations et sources, avec des états explicites lorsque la recherche échoue ou reste ambiguë. La navigation et la conservation de l'identité du document doivent être testées dans les conditions d'utilisation.
 
