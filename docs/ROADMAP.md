@@ -1,6 +1,6 @@
 # Feuille de route
 
-Beaume progresse par étapes vérifiables vers un premier outil local destiné aux avocats. L'objectif est de confronter le projet au terrain **durant l'année 2026**, selon l'avancement et la disponibilité de professionnels volontaires. Cette intention ne constitue ni une promesse commerciale ni une validation du produit.
+Beaume progresse par étapes vérifiables vers un premier outil local destiné aux avocats. L'objectif est de confronter le projet au terrain **durant l'année 2027**, selon l'avancement et la disponibilité de professionnels volontaires. Cette intention ne constitue ni une promesse commerciale ni une validation du produit.
 
 ## 1. Première expérience : résumé et sources
 
@@ -18,7 +18,7 @@ Le parcours doit distinguer la proposition d'une source, la localisation d'un pa
 - Clarifier les contrats entre extraction, résumé, provenance, vérification et restitution, sans présenter les expériences du laboratoire comme intégrées.
 - Tester les documents incomplets, les propositions multiples, les erreurs et l'identité du document ouvert ; préserver les avertissements.
 - Utiliser des cas synthétiques et des jeux de développement et d'évaluation séparés, en documentant les limites d'indépendance.
-- Mesurer la qualité des informations, des localisations et des abstentions, puis la durée, la mémoire et l'espace utilisés sur le matériel cible.
+- Évaluer séparément la couverture des informations, la localisation des passages et leur lien avec les affirmations ; préparer des grilles de lecture humaines, conserver les incertitudes et les désaccords. Mesurer les abstentions, la durée, la mémoire et l'espace utilisés sur le matériel cible.
 
 ## 3. Préparer la confrontation professionnelle
 
