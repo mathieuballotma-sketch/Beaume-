@@ -1,0 +1,590 @@
+{
+  "schema_version": "beaume.cas_signalement/3",
+  "note_generale": "Cas v2 : 7 cas v1 conserves (origine=v1, texte et faits annotes inchanges) + 10 cas cibles (origine=v2_nouveau). Ecrits en connaissant le registre de reference et le registre enrichi : tests cibles, pas evaluation independante. Les cas v1 ne sont pas modifies. Version v3 : cas v2 conserves (T5 texte inchange) + 5 cas ciblant les contre-exemples Codex (concurrence partagee, mois accentues, exhaustivite preexistante, annee absente).",
+  "cas": [
+    {
+      "id": "T1_omission_explicite",
+      "description": "Cas A4-R4 reproduit : texte mentionne 'mise en demeure recue', aucun fait annote correspondant.",
+      "evenements_consideres": [
+        "mise_en_demeure",
+        "resiliation"
+      ],
+      "texte_extrait": "Note interne : le prestataire a notifie la resiliation du contrat le 15 juin 2024. Par ailleurs, le prestataire indique avoir recu une mise en demeure du client (date non precisee).",
+      "faits_annotes": [
+        {
+          "fait_id": "F4a",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire"
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T2_reformulation",
+      "description": "Meme sens que 'resiliation' mais exprime autrement : 'rupture du contrat'. Le registre inclut cette forme ; la brique doit detecter si un fait sur resiliation est deja annote ou non.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a procede a la rupture du contrat le 15 juin 2024, apres plusieurs relances du client.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_a",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire"
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T3_negation",
+      "description": "Texte mentionne 'aucune resiliation n'a ete notifiee'. La brique doit detecter une mention (negation) et ne pas confondre avec une affirmation. Le fait de negation est annote ; la brique ne doit PAS produire d'alerte sur une negation correctement annotee.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le client indique qu'aucune resiliation ne lui a ete notifiee avant le 20 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_b",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "nie",
+          "auteur_declaration": "client"
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T4_dates_proches",
+      "description": "Texte mentionne deux evenements de meme type, dates proches. Un seul est annote. La brique doit signaler la seconde mention, meme si l'evenement existe dans une autre occurrence.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 15 juin 2024. Un second courrier du 18 juin 2024 confirme la resiliation.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_c",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T5_plusieurs_evenements",
+      "description": "Texte mentionne plusieurs evenements differents. Certains sont annotees, d'autres pas. La brique doit signaler les mentions non couvertes.",
+      "evenements_consideres": [
+        "mise_en_demeure",
+        "resiliation",
+        "reunion_conciliation"
+      ],
+      "texte_extrait": "Le client a adresse une mise en demeure le 10 juin 2024. Une reunion de conciliation s'est tenue le 12 juin. Le prestataire a ensuite resilie le contrat le 15 juin.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_d1",
+          "evenement": {
+            "type": "mise_en_demeure"
+          },
+          "propriete": "mise_en_demeure_envoyee",
+          "polarite": "affirme",
+          "auteur_declaration": "client",
+          "dates": [
+            {
+              "valeur": "10 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        },
+        {
+          "fait_id": "F_d2",
+          "evenement": {
+            "type": "reunion_conciliation"
+          },
+          "propriete": "reunion_tenue",
+          "polarite": "affirme",
+          "auteur_declaration": null,
+          "dates": [
+            {
+              "valeur": "12 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T6_fait_annote_autrement",
+      "description": "Le texte mentionne 'mise en demeure' et un fait l'annote correctement (mise_en_demeure_envoyee), mais avec une formulation differente ('courrier comminatoire'). La brique doit voir si l'annotation couvre la mention textuelle.",
+      "evenements_consideres": [
+        "mise_en_demeure"
+      ],
+      "texte_extrait": "Le client a adresse un courrier comminatoire au prestataire le 10 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_e",
+          "evenement": {
+            "type": "mise_en_demeure"
+          },
+          "propriete": "mise_en_demeure_envoyee",
+          "polarite": "affirme",
+          "auteur_declaration": "client",
+          "dates": [
+            {
+              "valeur": "10 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "T7_compatible_sans_omission",
+      "description": "Texte mentionne 'reunion de conciliation', fait annote en consequence. Aucune omission reelle. La brique ne doit produire AUCUNE alerte. Mais absence d'alerte NE signifie PAS absence d'omission (limite declaree).",
+      "evenements_consideres": [
+        "reunion_conciliation"
+      ],
+      "texte_extrait": "Une reunion de conciliation s'est tenue le 12 juin 2024, en presence de Mme Martin.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_f",
+          "evenement": {
+            "type": "reunion_conciliation"
+          },
+          "propriete": "reunion_tenue",
+          "polarite": "affirme",
+          "auteur_declaration": "Mme Martin",
+          "dates": [
+            {
+              "valeur": "12 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ],
+      "origine": "v1"
+    },
+    {
+      "id": "V2_01_date_avant",
+      "origine": "v2_nouveau",
+      "description": "Date avant la mention. Une seule mention, une seule date, fait annote coherent.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le 15 juin 2024, le prestataire a resilie le contrat.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_01",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_02_date_apres",
+      "origine": "v2_nouveau",
+      "description": "Date apres la mention. Une seule mention, une seule date, fait annote coherent.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_02",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_03_plusieurs_evenements_meme_phrase",
+      "origine": "v2_nouveau",
+      "description": "Deux types d'evenements, deux dates, dans la meme phrase. Seul le premier est annote.",
+      "evenements_consideres": [
+        "mise_en_demeure",
+        "resiliation"
+      ],
+      "texte_extrait": "Le client a envoye une mise en demeure le 10 juin 2024 et le prestataire a resilie le contrat le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_03",
+          "evenement": {
+            "type": "mise_en_demeure"
+          },
+          "propriete": "mise_en_demeure_envoyee",
+          "polarite": "affirme",
+          "auteur_declaration": "client",
+          "dates": [
+            {
+              "valeur": "10 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_04_deux_mentions_une_annotee",
+      "origine": "v2_nouveau",
+      "description": "Deux mentions de resiliation, dates differentes, un seul fait annote (date de la premiere). La seconde doit etre signalee.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 15 juin 2024. Le client a egalement resilie le contrat le 20 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_04",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_05_plusieurs_evenements_meme_date",
+      "origine": "v2_nouveau",
+      "description": "Deux types d'evenements a la meme date. Seul le premier est annote.",
+      "evenements_consideres": [
+        "mise_en_demeure",
+        "resiliation"
+      ],
+      "texte_extrait": "Le 15 juin 2024, le client a envoye une mise en demeure et le prestataire a resilie le contrat.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_05",
+          "evenement": {
+            "type": "mise_en_demeure"
+          },
+          "propriete": "mise_en_demeure_envoyee",
+          "polarite": "affirme",
+          "auteur_declaration": "client",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_06_mention_sans_date",
+      "origine": "v2_nouveau",
+      "description": "Mention sans date, fait annote avec date. L'association est indeterminable.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_06",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_07_association_ambigue",
+      "origine": "v2_nouveau",
+      "description": "Mention entouree de deux dates, aucune ne correspond au fait annote. Association ambigue.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le 10 juin 2024, le client a envoye une mise en demeure. Le 12 juin 2024, une reunion de conciliation s'est tenue. Le prestataire a resilie le contrat.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_07",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_08_reformulation_hors_reference",
+      "origine": "v2_nouveau",
+      "description": "Le texte utilise 'mise a fin du contrat' (absent du registre de reference, present dans l'enrichi). Le fait est annote.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a procede a la mise a fin du contrat le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_08",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V2_09_negation_et_affirmation",
+      "origine": "v2_nouveau",
+      "description": "Deux mentions de resiliation : une affirmative, une negative. Les deux sont annotees.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le client affirme avoir resilie le contrat le 15 juin 2024. Le prestataire indique qu'aucune resiliation n'a ete notifiee.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_09a",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "client",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        },
+        {
+          "fait_id": "F_v2_09b",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "nie",
+          "auteur_declaration": "prestataire"
+        }
+      ]
+    },
+    {
+      "id": "V2_10_date_incompatible",
+      "origine": "v2_nouveau",
+      "description": "Le fait annote a une date incompatible avec celle de la mention.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v2_10",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "20 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V3_01_concurrence_partagee",
+      "origine": "v3_nouveau",
+      "description": "Deux mentions identiques a la meme date, une seule annotation : la concurrence doit etre visible sur les DEUX mentions (couvert_partage_ambigu).",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Une resiliation du contrat par le client est survenue le 15 juin 2024. Une resiliation du contrat par le prestataire est survenue le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v3_01",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V3_02_mois_sans_accent",
+      "origine": "v3_nouveau",
+      "description": "Controle de non-regression : mois 'fevrier' sans accent.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 18 fevrier 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v3_02",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "18 fevrier 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V3_02b_mois_accentue",
+      "origine": "v3_nouveau",
+      "description": "Repro du bug 2 : date avec 'février' accentue (Unicode). Detection + offsets preserves.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 18 février 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v3_02b",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "18 février 2024",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "V3_03_exhaustivite_preexistante",
+      "origine": "v3_nouveau",
+      "description": "Repro du bug 3 : le fait annote porte deja 'exhaustivite': 'complete'. La brique ne doit pas planter ; elle doit verifier qu'elle ne l'a pas modifie.",
+      "evenements_consideres": [
+        "resiliation"
+      ],
+      "texte_extrait": "Le prestataire a resilie le contrat le 15 juin 2024.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v3_03",
+          "evenement": {
+            "type": "resiliation"
+          },
+          "propriete": "resiliation_notifiee",
+          "polarite": "affirme",
+          "auteur_declaration": "prestataire",
+          "dates": [
+            {
+              "valeur": "15 juin 2024",
+              "role": "date_evenement"
+            }
+          ],
+          "exhaustivite": "complete"
+        }
+      ]
+    },
+    {
+      "id": "V3_04_annee_absente",
+      "origine": "v3_nouveau",
+      "description": "Repro de G3 : mention '12 juin' sans annee ; fait '12 juin 2030'. Doit etre ambiguite, pas couverture silencieuse.",
+      "evenements_consideres": [
+        "reunion_conciliation"
+      ],
+      "texte_extrait": "Une reunion de conciliation s'est tenue le 12 juin.",
+      "faits_annotes": [
+        {
+          "fait_id": "F_v3_04",
+          "evenement": {
+            "type": "reunion_conciliation"
+          },
+          "propriete": "reunion_tenue",
+          "polarite": "affirme",
+          "auteur_declaration": null,
+          "dates": [
+            {
+              "valeur": "12 juin 2030",
+              "role": "date_evenement"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

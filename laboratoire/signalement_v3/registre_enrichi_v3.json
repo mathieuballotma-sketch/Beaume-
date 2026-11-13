@@ -1,0 +1,50 @@
+{
+  "schema_version": "beaume.registre_mots_cles/2-enrichi",
+  "derive_de": {
+    "fichier": "brique_signalement_v1/registre_mots_cles_v1.json",
+    "sha256": "62703b3aca92842e719a912c07564be3a6704ccff8ffc191b3d35f8b997701c3"
+  },
+  "note_generale": "Extension EXPERIMENTALE du registre de reference. Ne remplace PAS le registre de reference. Ecrit en connaissant T6 ('courrier comminatoire'). Contient (a) des formulations ajoutees pour couvrir T6 et des variantes proches, (b) des formulations de generalisation NON vues dans les cas v1, marquees comme telles. L'execution de reference de la v2 utilise registre_reference_v2.json ; l'execution enrichie utilise ce fichier. Toute amelioration de T6 sous ce registre ne prouve PAS une generalisation : c'est un test de couverture ciblee.",
+  "types_evenement": {
+    "mise_en_demeure": {
+      "indicatifs": ["mise en demeure", "mis en demeure", "courrier comminatoire", "lettre comminatoire", "sommation", "lettre de mise en demeure"],
+      "negation_marqueurs": ["aucune mise en demeure", "pas de mise en demeure", "sans mise en demeure"],
+      "note": "'courrier comminatoire' et 'lettre comminatoire' ajoutes pour T6 ; 'sommation' et 'lettre de mise en demeure' sont des variantes proches connues de l'auteur."
+    },
+    "resiliation": {
+      "indicatifs": ["resiliation", "resilie", "resilier", "rompre le contrat", "rupture du contrat", "mise a fin du contrat", "fin du contrat"],
+      "negation_marqueurs": ["pas de resiliation", "aucune resiliation", "n'a pas resilie", "sans resiliation"],
+      "note": "'mise a fin du contrat' et 'fin du contrat' : variantes ajoutees, NON presentes dans les cas v1."
+    },
+    "reunion_conciliation": {
+      "indicatifs": ["reunion de conciliation", "reunion de mediation", "conciliation"],
+      "negation_marqueurs": ["pas de reunion", "aucune reunion", "sans reunion"],
+      "note": "'conciliation' seul ajoute comme variante ; NON present dans les cas v1."
+    },
+    "entretien_prealable": {
+      "indicatifs": ["entretien prealable"],
+      "negation_marqueurs": ["pas d'entretien", "aucun entretien", "sans entretien"],
+      "note": "Inchange par rapport a la reference."
+    },
+    "convocation": {
+      "indicatifs": ["convocation", "convoque", "convoquee"],
+      "negation_marqueurs": ["aucune convocation", "pas de convocation", "sans convocation", "n'a recu aucune convocation"],
+      "note": "Inchange par rapport a la reference."
+    },
+    "decision_licenciement": {
+      "indicatifs": ["decision de licenciement", "licencier", "licencie", "licenciee"],
+      "negation_marqueurs": ["pas de licenciement", "aucun licenciement"],
+      "note": "Inchange par rapport a la reference."
+    }
+  },
+  "formulations_non_prevues_pour_generalisation": [
+    "acte introductif d'instance",
+    "courrier d'huissier",
+    "signification"
+  ],
+  "limites_declarees": [
+    "Registre ecrit en connaissant T6 : biais declare.",
+    "Les formulations de generalisation ne sont PAS ajoutees au registre ; elles servent a verifier que la v2 ne pretend pas les detecter.",
+    "Une reformulation hors registre reste invisible : absence d'alerte n'est pas preuve d'absence de mention."
+  ]
+}

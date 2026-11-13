@@ -1,0 +1,15 @@
+{
+  "objet": "empreintes des fichiers de cette sélection publique, non preuve d’antériorité des expériences",
+  "fichiers": {
+    "EVALUATION.md": "7eeabcebe109f1c75464aa48ae83a9bdd4ba5f183ac6fa49d2b90412a934d778",
+    "HISTORIQUE.md": "fa674aacd907a67b1081c5199327f079af48d5c1e446517e227c4c6103569fd8",
+    "README.md": "0b2552e0a12119dd2f76abf409de5d68f4c1652480e8df69a522e2bcd3e43d1a",
+    "calcul_reference/moteur_reference.py": "2cfaf310f0ce2b6c5d4c67f462d53cc7662847bd4de8ae9a25a836b09d6f2d93",
+    "calcul_reference/test_moteur_reference.py": "ed2694971b92919942ba2b8da2ba184ad8865f23c0496373f4107df89f2f935d",
+    "signalement_v3/attentes_test_v3.json": "17431e7f5174e8b5daff56e1e2f7edfa0a1c5022243c7f0f80c4af249cc5e9e3",
+    "signalement_v3/brique_signalement_v3.py": "3dc580acc14968150c71b39650623f49ca08433040fc1e4241d989df947294af",
+    "signalement_v3/cas_test_v3.json": "7cd76b970e921de5dcdaeefe0a56bda15c67c877e0a8836ed91b4f16a113349e",
+    "signalement_v3/registre_enrichi_v3.json": "0c509406e99d2e0171514e3e88cf184f428d43f3414fd2a450a5ef0682e387e1",
+    "signalement_v3/registre_reference_v3.json": "62703b3aca92842e719a912c07564be3a6704ccff8ffc191b3d35f8b997701c3"
+  }
+}

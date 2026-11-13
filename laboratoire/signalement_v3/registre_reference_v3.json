@@ -1,0 +1,43 @@
+{
+  "schema_version": "beaume.registre_mots_cles/1",
+  "note_generale": "Registre ecrit MANUELLEMENT par l'auteur de l'experience. Il associe a chaque type d'evenement des formes lexicales (indicatifs) qui, si trouvees dans un texte, signalent une mention potentielle. Les indicateurs sont ecrits en connaissant D7 et D8 : c'est un BIAIS A DOCUMENTER. Le registre n'est pas exhaustif : une mention reformulee autrement peut echapper a la detection. Absence d'alerte NE signifie PAS absence de mention.",
+  "types_evenement": {
+    "mise_en_demeure": {
+      "indicatifs": ["mise en demeure", "mis en demeure"],
+      "negation_marqueurs": ["aucune mise en demeure", "pas de mise en demeure", "sans mise en demeure"],
+      "note": "Les indicateurs sont volontairement minimaux (n'importe quel signalement 'mise en demeure' suffit). Ne pas lister 'mise' seul, 'demeure' seul (trop communs)."
+    },
+    "resiliation": {
+      "indicatifs": ["resiliation", "resilie", "resilier", "rompre le contrat", "rupture du contrat"],
+      "negation_marqueurs": ["pas de resiliation", "aucune resiliation", "n'a pas resilie", "sans resiliation"],
+      "note": "Formes actives et passives. 'rompre' est volontairement inclus pour tester si une reformulation est couverte. La negation 'n'a pas resilie' est distinguee d'une affirmation."
+    },
+    "reunion_conciliation": {
+      "indicatifs": ["reunion de conciliation", "reunion de mediation"],
+      "negation_marqueurs": ["pas de reunion", "aucune reunion", "sans reunion"],
+      "note": "'reunion' seul n'est pas un indicateur : trop generique. 'reunion de conciliation' est retenu."
+    },
+    "entretien_prealable": {
+      "indicatifs": ["entretien prealable"],
+      "negation_marqueurs": ["pas d'entretien", "aucun entretien", "sans entretien"],
+      "note": "Utilise pour les futurs dossiers de type D7."
+    },
+    "convocation": {
+      "indicatifs": ["convocation", "convoque", "convoquee"],
+      "negation_marqueurs": ["aucune convocation", "pas de convocation", "sans convocation", "n'a recu aucune convocation"],
+      "note": "Distingue la forme verbale ('convoque') de la forme nominale ('convocation')."
+    },
+    "decision_licenciement": {
+      "indicatifs": ["decision de licenciement", "licencier", "licencie", "licenciee"],
+      "negation_marqueurs": ["pas de licenciement", "aucun licenciement"],
+      "note": "Utilise pour D7 et d'autres dossiers de type droit du travail."
+    }
+  },
+  "limites_declarees": [
+    "Le registre est ecrit en connaissant les deux dossiers D7 et D8. Le corpus de test sera cible, pas independant.",
+    "Une mention reformulee sans mot-cle (ex: 'mise en demeure' ecrit 'lettre comminatoire') echappera a la detection. L'absence d'alerte n'est PAS une preuve d'absence de mention.",
+    "Une mention ambigue (deux evenements differents dans la meme phrase) peut etre manquee ou faussement assignee.",
+    "Le registre devra etre etendu si le moteur est utilise sur d'autres domaines.",
+    "La detection lexicale n'est pas une comprehension de texte libre. Un modele pourrait mieux faire, mais serait non deterministe et plus couteux."
+  ]
+}
