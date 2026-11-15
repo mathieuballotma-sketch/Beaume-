@@ -1,5 +1,11 @@
 # Journal des versions publiques
 
+## 2026-11-15 — état vérifiable et expériences locales
+
+- Présentation recentrée sur les fonctions disponibles, leurs tests et leurs limites.
+- Publication séparée de prototypes expérimentaux récents, sans les présenter comme intégrés au parcours principal.
+- Clarification des prérequis Python et du caractère fictif des données de démonstration.
+
 ## 2026-11-02 — rangement des ressources expérimentales
 
 - Prototype d'usine désactivé isolé dans `scripts/experimental/`, entrée historique conservée.

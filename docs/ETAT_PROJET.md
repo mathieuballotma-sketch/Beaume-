@@ -1,4 +1,4 @@
-# État du projet — 12 novembre 2026
+# État du projet — 15 novembre 2026
 
 Beaume est un prototype en recherche et développement. L'objectif est une première expérience vérifiable avec des avocats ; aucun résultat disponible ne démontre une aptitude à l'analyse autonome de dossiers professionnels.
 
@@ -15,11 +15,11 @@ Beaume est un prototype en recherche et développement. L'objectif est une premi
 
 Les états du rapport décrivent des contrôles logiciels. Ils ne certifient ni l'exhaustivité ni la justesse juridique.
 
-## Travaux locaux en cours
+## Prototypes séparés
 
-Le laboratoire expérimente le Balladeur pour construire et examiner des dossiers synthétiques, ainsi que la conservation de plusieurs propositions de sources et une navigation expérimentale vers des pages PDF. Sur le dossier fictif D7, une vue par thème présente des points à examiner construits à partir de faits annotés manuellement. Les trois liens de sources et un saut vers la page 2 d’un PDF fictif ont été observés dans Safari, sur les cas testés uniquement. Une première grille de travail destinée à l’évaluation humaine du lien affirmation–passage a été préparée. Sa méthode et le choix des paires restent à revoir avant annotation ; aucune conclusion d’étayage ou validation professionnelle n’en découle. Ces travaux ne sont pas tous publiés ou raccordés à l’application. Leur existence ne démontre pas une généralisation, l’indépendance complète des jeux ni l’aptitude à entraîner un modèle. La localisation d’un passage et son lien avec l’affirmation restent des contrôles distincts.
+Le [laboratoire](../laboratoire/README.md) contient un parcours expérimental sur PDF fictif avec journal des étapes, détection de certains signaux et interface OCR Apple Vision. Ce parcours est séparé du pipeline principal, qui n'intègre pas l'OCR. Le laboratoire contient également une expérimentation de calcul matriciel CPU et Metal : ce n'est pas un moteur de calcul pour LLM. Le prototype de génération utilise `llama.cpp`, et non un moteur d'inférence propre à Beaume.
 
-L'objectif immédiat est de raccorder progressivement résumé, informations et sources, avec des états explicites lorsque la recherche échoue ou reste ambiguë. La navigation et la conservation de l'identité du document doivent être testées dans les conditions d'utilisation.
+Les essais et leurs limites sont décrits avec le code. Les poids des modèles et les corpus juridiques réels ne sont pas publiés. Une exécution locale ou un test réussi ne prouve pas la sécurité ou la fidélité générale.
 
 ## Points à démontrer avant un essai professionnel
 

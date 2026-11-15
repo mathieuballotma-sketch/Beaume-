@@ -17,5 +17,5 @@ anciennes commandes et délègue à ce module.
 
 Tests : `tests/unit/test_usine_fail_closed.py`. Retirer le blocage ne suffit pas
 à rendre cette expérience utilisable : il faut un contrat de scénario, des
-preuves et une évaluation appropriée. Le laboratoire Balladeur actif n'est pas
-représenté par ce prototype historique.
+preuves et une évaluation appropriée. Ce prototype historique reste distinct
+des autres expériences publiées dans le laboratoire.

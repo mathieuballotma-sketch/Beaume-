@@ -1,7 +1,7 @@
 """Prototype historique de génération, conservé pour les tests de non-régression.
 
 Génération désactivée : les constantes d'affaire des templates empêchent leur
-réutilisation. Ce module n'est pas le générateur Balladeur actif. Il conserve
+réutilisation. Ce module historique est désactivé. Il conserve
 les contrôles de dates, montants et inéligibilité ; voir README.md dans ce dossier.
 """
 from __future__ import annotations

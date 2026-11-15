@@ -5,7 +5,7 @@
 | Premier essai et installation | [Démarrage](DEMARRAGE.md) |
 | Modules et flux | [Architecture](ARCHITECTURE.md) |
 | Fonctionnalités et limites | [État du projet](ETAT_PROJET.md) |
-| Priorités | [Feuille de route](ROADMAP.md) |
+| Périmètre | [Périmètre du prototype](ROADMAP.md) |
 | Tests et CI | [Tests](TESTS.md) |
 | Évaluation de la recherche | [Audit de recherche](AUDIT_RECHERCHE.md) |
 | Expériences, choix et limites | [Laboratoire](../laboratoire/README.md) |

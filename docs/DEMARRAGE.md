@@ -10,7 +10,7 @@ Employer un dossier public ou synthétique pour les premiers essais.
 Depuis le clone, avec Python 3.12 recommandé :
 
 ```bash
-python3 -m venv .venv
+python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev]'
 ```

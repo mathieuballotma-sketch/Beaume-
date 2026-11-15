@@ -34,6 +34,11 @@ corpus réel. Elle refuse d’écraser une sortie existante.
 
 ## Publication
 
+Mesure locale du 15 novembre 2026 sur le parcours principal avec Python 3.12 :
+**667 tests réussis, 35 ignorés**, notamment faute de corpus locaux. La
+démonstration hors ligne a été rejouée avec succès. Les tests des expériences
+du laboratoire sont distincts de cette suite ; voir leurs README respectifs.
+
 `verifier_publication.py` inspecte les fichiers suivis pour détecter des catégories
 de documents internes, artefacts locaux et chemins personnels. C’est un garde-fou
 limité, pas un détecteur exhaustif de secrets. Inspecter le diff avant publication.

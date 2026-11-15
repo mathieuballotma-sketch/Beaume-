@@ -18,11 +18,3 @@ Une mesure d'étayage n'est pas une appréciation juridique. Les faits absents d
 Figer à l'avance les données fictives, les attendus, la version, les paramètres et, lorsque nécessaire, le modèle et son empreinte. Enregistrer les passages transmis et les sorties brutes. Distinguer critères préparés avant observation et catégories ajoutées après. Comparer à conditions identiques, répéter les mesures et mentionner ce qui a été simulé ou relu par IA. Une empreinte de fichier ne prouve pas à elle seule qu'il existait avant la première observation des résultats.
 
 Mesurer aussi le temps et la mémoire sans les confondre avec la qualité. Les tests synthétiques aident à trouver des défauts ; ils ne permettent pas d'annoncer une fiabilité statistique sur les dossiers réels.
-
-## Suites
-
-1. Obtenir des retours d'avocats sur leurs besoins et la lisibilité des résultats fictifs.
-2. Diversifier les dossiers et les formulations ; préparer des références et une réserve avant réglage.
-3. Mesurer extraction, sélection, résumé, localisation et étayage séparément.
-4. Étudier les instructions hostiles et les autres risques de sécurité avec des scénarios autorisés.
-5. Construire le moteur de calcul par étapes, mesurer son exactitude puis ses ressources ; maintenir le fonctionnement actuel distinct des ambitions.

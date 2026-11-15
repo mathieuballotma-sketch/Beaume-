@@ -4,12 +4,14 @@ Ce laboratoire rassemble des expériences séparées du parcours public de Beaum
 
 ## S'y retrouver
 
-- [Historique des expériences et décisions](HISTORIQUE.md) : problème, approche, observations et limites.
-- [Protocole d'évaluation et prochaines étapes](EVALUATION.md) : mesures et conditions de comparaison.
+- [Historique des briques publiées](HISTORIQUE.md) : expériences présentes et limites.
+- [Protocole d'évaluation](EVALUATION.md) : mesures et conditions de comparaison.
 - [Signalement exploratoire v3](signalement_v3/) : détecteur déterministe et cas synthétiques ; ce n'est pas une validation sémantique.
 - [Calcul de référence](calcul_reference/) : attention causale pédagogique en Python ; ce n'est pas un moteur d'inférence complet.
+- [Prototype local et OCR Apple](moteur_local_experimental/) : orchestration expérimentale et tests, séparés du parcours principal.
+- [Calcul matriciel Apple](calcul_matrices_apple/) : premières opérations CPU et Metal, séparées de l'inférence.
 
-Cette première publication est une **sélection**, pas une archive exhaustive des travaux historiques. Les scripts et résultats conservés dans les laboratoires locaux ne sont pas tous publiés ni forcément reproductibles depuis ce dépôt. Des références aux expériences non incluses sont signalées comme telles dans l'historique. Aucune donnée cliente, aucun poids de modèle ni corpus juridique réel ne sont inclus.
+Cette publication est une **sélection** des travaux disponibles ; elle ne contient pas tous les essais locaux. Aucune donnée cliente, aucun poids de modèle ni corpus juridique réel ne sont inclus.
 
 ## Rejouer les briques incluses
 

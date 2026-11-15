@@ -75,19 +75,14 @@ structures de tests sous `data/scenarios/` sont publiés ; leurs rapports géné
 restent locaux. Les noms `v2` ou `v3` de
 bases expérimentales ne changent pas le chemin ouvert par le script nominal.
 
-## Produit et laboratoire Balladeur
+## Produit et expériences
 
-Beaume analyse les pièces. Le Balladeur explore la fabrication de données
-synthétiques pour des tâches d’entraînement et d’évaluation distinctes.
-Les lots locaux et les branches de recherche ont leurs propres versions et preuves.
-La présence d’un script d’usine n’atteste pas qu’un dataset est prêt à entraîner
-un modèle. Une structure cohérente et des contrôles déterministes ne suffisent
-pas à valider les conclusions juridiques.
-
-Le [prototype historique](../scripts/experimental/README.md) reste bloqué et
-sert aux tests de non-régression. Il ne représente pas le laboratoire actif.
-Les [gabarits publiés](../data/scenarios/README.md) sont des supports logiciels
-fictifs, pas des modèles d’actes.
+Le pipeline ci-dessus et les expériences du [laboratoire](../laboratoire/README.md)
+sont distincts. La présence d’une expérience dans le dépôt ne signifie pas que
+sa fonction est intégrée au parcours principal. Les [gabarits publiés](../data/scenarios/README.md)
+sont des supports fictifs de test, pas des modèles d’actes juridiques. Le
+[prototype historique de génération](../scripts/experimental/README.md) reste
+désactivé ; il est conservé pour les tests du blocage.
 
 ## Faire évoluer le code
 
