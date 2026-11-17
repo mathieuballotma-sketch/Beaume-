@@ -14,6 +14,8 @@ Les fichiers de `sources/` sont copiés de l'étape F du laboratoire local :
   déquantification et produits matrice-vecteur par blocs ;
 - `primitives_couche.swift` : normalisation, rotation, softmax et opérations
   utilisées par les couches ;
+- `tokenizer.swift` : tokenizer byte-level BPE expérimental de l'étape E,
+  pour la configuration Qwen2 étudiée ;
 - `forward.swift`, `forward_kv.swift` et `helpers.swift` : parcours expérimental
   de 28 couches pour une configuration spécifique de Qwen2, avec et sans
   cache KV.
@@ -35,8 +37,8 @@ swiftc -O sources/*.swift verification/main.swift -o /tmp/beaume_verif_inference
 /tmp/beaume_verif_inference
 ```
 
-Le contrôle vérifie quelques primitives sur des entrées synthétiques et ne
-charge aucun modèle. Il ne valide ni GGUF, ni les déquantifications, ni les
+Le contrôle vérifie quelques primitives et un cas de tokenizer sur des entrées
+synthétiques et ne charge aucun modèle. Il ne valide ni GGUF, ni les déquantifications, ni les
 28 couches, ni une génération, ni la sécurité du lecteur. Il n'y a pas de
 commande d'inférence complète reproductible livrée dans cette sélection.
 
@@ -48,6 +50,9 @@ Les éléments suivants résument des comptes rendus locaux ; ils n'ont pas tous
 - Étape F : sur un prompt et cinq tokens générés, deux implémentations avec et
   sans cache KV ont produit les mêmes tokens. Cette mesure seule ne prouve pas
   l'égalité des logits complets ou la fidélité au modèle.
+- Étape E : les comptes rendus locaux rapportent 36 cas d'encodage comparés à
+  `llama-tokenize`. Ce jeu complet et le modèle ne sont pas fournis ici ;
+  le contrôle inclus utilise seulement un vocabulaire synthétique.
 - Étape H : une variante expérimentale ultérieure `no-ptr`, **non incluse dans
   ces sources F**, a été comparée sur une courte séquence ; un gain de temps
   d'environ 26 % est rapporté sur cette machine et ce cas. Pas de conclusion
@@ -56,6 +61,10 @@ Les éléments suivants résument des comptes rendus locaux ; ils n'ont pas tous
   premier token identique à chaque position, mais écart maximal de logits
   d'environ 1,669, dont la cause n'est pas établie. Un accord d'argmax ne
   démontre pas la justesse de tous les calculs.
+
+Le [protocole de comparaison des logits](comparaison_logits/README.md) publie
+les sorties Swift enregistrées pour reproduire la comparaison externe. Il ne
+reproduit pas la génération de ces sorties par le moteur Swift.
 
 L'exécution du prototype étudié est distincte de celle d'Ollama et de
 `llama.cpp` ; des outils tiers ont servi à certaines comparaisons. Les essais

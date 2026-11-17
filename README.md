@@ -15,7 +15,7 @@ Beaume vise à aider l’avocat à lire un dossier, à en obtenir une synthèse 
 
 Le parcours principal publié sait extraire le texte de PDF textuels, découper et sélectionner des passages, rechercher des articles candidats dans un corpus local et appeler un modèle local via Ollama. Les références sélectionnées sont reconstruites à partir du corpus ; le programme contrôle notamment l’existence de l’article et de sa version à la date de référence, puis produit un rapport Markdown. Ces contrôles dépendent du corpus disponible : ils ne prouvent pas que l’article est pertinent ou applicable au dossier. La démonstration ci-dessous utilise une réponse fixe et des données fictives.
 
-Le [laboratoire](laboratoire/README.md) contient des expériences distinctes du parcours principal : un prototype d’orchestration et d’OCR Apple, un adaptateur de génération utilisant `llama.cpp`, et des [sources Swift expérimentales](laboratoire/inference_swift_experimentale/README.md) pour certaines opérations d’inférence, dont un parcours propre à une configuration de 28 couches. Ces dernières ne forment pas un moteur prêt à l’emploi et ne fournissent pas ici de génération complète reproductible. Les conditions et limites figurent dans chaque dossier.
+Le [laboratoire](laboratoire/README.md) contient des expériences distinctes du parcours principal : un prototype d’orchestration et d’OCR Apple, un adaptateur de génération utilisant `llama.cpp`, et des [sources Swift expérimentales](laboratoire/inference_swift_experimentale/README.md) pour certaines opérations d’inférence, dont un parcours pour une configuration spécifique de Qwen2. Ces dernières ne forment pas un moteur prêt à l’emploi et ne fournissent pas ici de génération complète reproductible. Les conditions et limites figurent dans chaque dossier.
 
 **Un passage localisé ne prouve pas qu’il étaye une affirmation.** Les contrôles et les tests ne démontrent ni l’exhaustivité du dossier, ni la fidélité générale d’un résumé, ni la pertinence juridique d’une référence. Le fonctionnement local ne garantit pas à lui seul la confidentialité.
 
@@ -29,7 +29,7 @@ cd Beaume-
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e '.[dev,corpus]'
-PYTHONPATH=. python scripts/demo_hors_ligne.py
+python scripts/demo_hors_ligne.py
 ```
 
 Le rapport est créé dans `data/out/demo_hors_ligne.md`. Pour un essai avec modèle, corpus et PDF textuels, voir le [guide de démarrage](docs/DEMARRAGE.md). Les poids des modèles et les corpus juridiques ne sont pas inclus.
@@ -38,14 +38,13 @@ Extrait de la démonstration, entièrement fictive :
 
 ```text
 Contexte : DEMONSTRATION FICTIVE : dommage à un vélo fictif.
+Articles candidats (existence et version vérifiées dans le corpus ; pertinence et applicabilité non vérifiées)
 code_civil - Article 9999
 Source dans le dossier : exemple.pdf (page 1)
 Extrait cité : REGLE FICTIVE DE TEST : dommage au velo fictif.
 ```
 
-Le libellé actuel du rapport « Articles applicables (verifies) » est trop
-affirmatif : la vérification technique ne démontre pas l'applicabilité juridique.
-Ce défaut de présentation reste à corriger avant un usage réel.
+La vérification technique ne démontre pas l'applicabilité juridique.
 
 ## Documentation
 

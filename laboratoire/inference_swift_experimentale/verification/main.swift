@@ -26,4 +26,9 @@ guard rotation == [1, 2, 3, 4] else {
     fputs("Échec : RoPE en position zéro\n", stderr)
     exit(1)
 }
-print("OK : softmax, opérations élémentaires et RoPE sur cas synthétiques")
+guard let tokenizer = Tokenizer(vocab: ["a", "b", "ab"], merges: ["a b"], types: [1, 1, 1]),
+      tokenizer.encode("ab") == [2], tokenizer.decode([2]) == "ab" else {
+    fputs("Échec : tokenizer synthétique\n", stderr)
+    exit(1)
+}
+print("OK : softmax, opérations élémentaires, RoPE et tokenizer sur cas synthétiques")

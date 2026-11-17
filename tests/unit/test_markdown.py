@@ -104,7 +104,8 @@ def test_rendu_contient_parties_et_demandes():
 def test_rendu_avec_citation_valide():
     r = _rapport_avec([_citation_valide()])
     md = rendre_markdown(r)
-    assert "Articles applicables (verifies)" in md
+    assert "Articles candidats (existence et version vérifiées dans le corpus ; pertinence et applicabilité non vérifiées)" in md
+    assert "Articles applicables (verifies)" not in md
     assert "L. 1234-1" in md
     assert "LEGIARTI000006904501" in md
     assert "legifrance.gouv.fr" in md

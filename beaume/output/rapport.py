@@ -175,7 +175,7 @@ def rendre_markdown(rapport: Rapport) -> str:
         lignes += [f"- {p}" for p in a.problemes_juridiques]
         lignes += [""]
 
-    lignes += ["## Articles applicables (verifies)", ""]
+    lignes += ["## Articles candidats (existence et version vérifiées dans le corpus ; pertinence et applicabilité non vérifiées)", ""]
     if rapport.citations_valides:
         for v in rapport.citations_valides:
             lignes.append(_formater_verification(v))

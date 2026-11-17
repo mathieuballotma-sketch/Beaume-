@@ -105,7 +105,7 @@ def test_pipeline_hydrate_le_texte_officiel_et_valide_la_citation(tmp_path):
     assert citation.numero == "1240"
     assert citation.extrait.startswith("Tout fait quelconque")
     assert "Tout fait quelconque" in generateur.dernier_prompt
-    assert "Articles applicables" in markdown
+    assert "Articles candidats" in markdown
 
 
 def test_pipeline_ignore_code_numero_et_extrait_fournis_par_le_llm(tmp_path):

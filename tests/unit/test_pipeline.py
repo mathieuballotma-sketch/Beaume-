@@ -109,7 +109,7 @@ def test_pipeline_avec_citation_valide(tmp_path):
 
     assert len(rapport.citations_valides) == 1
     assert len(rapport.citations_rejetees) == 0
-    assert "Articles applicables" in md
+    assert "Articles candidats" in md
     assert "1240" in md
 
 
