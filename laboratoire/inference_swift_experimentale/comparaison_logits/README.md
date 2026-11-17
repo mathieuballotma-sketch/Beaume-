@@ -53,3 +53,11 @@ déquantifiés ; comparer ensuite le chemin Q8, les sorties intermédiaires par
 couche et les logits. Examiner aussi l'ordre d'accumulation, RoPE et GQA.
 Ne conclure ni à un bug ni à une simple conséquence de la quantification sans
 résultat discriminant. Les exemples et données de test doivent être fictifs.
+
+Un contrôle partiel historique a été rejoué le 17 novembre 2026 : sur le
+tenseur Q6_K `blk.0.ffn_down.weight`, pour un vecteur de test, le produit
+par blocs Swift et un produit Swift sur poids préalablement déquantifiés en
+Float32 donnent 18 944 résultats bit-identiques. Ils partagent cependant des
+composants, et ce test ne compare ni les activations de ces six positions ni
+les logits à une référence flottante indépendante. Il ne départage donc pas
+les causes de l'écart avec llama.cpp ; c'est le travail à réaliser ci-dessus.
