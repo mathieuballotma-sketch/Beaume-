@@ -1,7 +1,8 @@
 """Adaptateur Ollama pour la generation de texte (LLM local).
 
-Respecte le contrat Generateur. Utilise un modele local via Ollama.
-Aucune donnee ne quitte la machine.
+Respecte le contrat Generateur. Prévu pour utiliser un modèle via Ollama.
+Le caractère local dépend de la configuration effective d'Ollama, du modèle
+et de l'environnement ; cet adaptateur ne garantit pas l'absence de flux réseau.
 
 Mode JSON natif : Ollama supporte le constrained decoding. Le schema
 JSON est defini dans beaume.application.schemas et transmis via le
@@ -70,7 +71,7 @@ __all__ = ["GenerateurOllama", "SCHEMA_ANALYSE"]
 
 
 class GenerateurOllama:
-    """Generateur de texte via Ollama, 100% local."""
+    """Generateur de texte via Ollama ; vérifier la configuration effective."""
 
     def __init__(
         self,
