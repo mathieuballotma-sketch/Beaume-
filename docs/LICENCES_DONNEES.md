@@ -15,6 +15,12 @@ Cette licence ne remplace pas les licences des dépendances ou ressources tierce
   dataset exact ; une copie hébergée n’efface pas les conditions des sources.
 - Modèles : vérifier la licence des poids, du modèle de base et de chaque
   adaptation ; la licence du code Beaume n’accorde aucun droit sur ces poids.
+- À titre d'exemple, les cartes officielles indiquent `qwen-research` pour
+  [Qwen2.5-3B-Instruct](https://huggingface.co/Qwen/Qwen2.5-3B-Instruct) et
+  Apache-2.0 pour [Qwen2.5-7B-Instruct](https://huggingface.co/Qwen/Qwen2.5-7B-Instruct).
+  Ne pas déduire les droits d'un modèle finement adapté de son seul nom :
+  vérifier la version exacte, ses poids et les droits des données d'entraînement
+  avant toute redistribution ou utilisation commerciale.
 - Gabarits sous `data/scenarios/structures/` : textes techniques fictifs rédigés
   pour le dépôt le 2 novembre 2026, sous AGPL-3.0-only, remplaçant les anciens
   textes à provenance insuffisamment documentée. Ce ne sont pas des modèles

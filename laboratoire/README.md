@@ -10,6 +10,7 @@ Ce laboratoire rassemble des expériences séparées du parcours public de Beaum
 - [Calcul de référence](calcul_reference/) : attention causale pédagogique en Python ; ce n'est pas un moteur d'inférence complet.
 - [Prototype local et OCR Apple](moteur_local_experimental/) : orchestration expérimentale et tests, séparés du parcours principal.
 - [Calcul matriciel Apple](calcul_matrices_apple/) : premières opérations CPU et Metal, séparées de l'inférence.
+- [Inférence Swift expérimentale](inference_swift_experimentale/) : premières sources de calcul pour une configuration de modèle précise, non intégrées au produit.
 
 Cette publication est une **sélection** des travaux disponibles ; elle ne contient pas tous les essais locaux. Aucune donnée cliente, aucun poids de modèle ni corpus juridique réel ne sont inclus.
 
